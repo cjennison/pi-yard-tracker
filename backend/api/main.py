@@ -4,13 +4,14 @@ Pi Yard Tracker REST API
 FastAPI application for querying photos and detections.
 """
 
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 from backend.database import get_db
 from .routes import photos_router, detections_router, stats_router
 from .schemas import HealthResponse
+from .live_stream import handle_websocket
 
 # Setup logging
 logging.basicConfig(
@@ -100,6 +101,21 @@ def health_check():
 app.include_router(photos_router)
 app.include_router(detections_router)
 app.include_router(stats_router)
+
+
+# ============================================================
+# WebSocket Endpoints
+# ============================================================
+
+@app.websocket("/live")
+async def websocket_live_feed(websocket: WebSocket):
+    """
+    WebSocket endpoint for live camera feed with detection overlay
+    
+    Streams real-time camera frames with YOLO detection results.
+    Clients can send configuration updates like confidence threshold.
+    """
+    await handle_websocket(websocket)
 
 
 # ============================================================

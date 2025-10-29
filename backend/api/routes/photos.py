@@ -5,8 +5,10 @@ Endpoints for querying photos and their metadata.
 """
 
 from fastapi import APIRouter, Query, HTTPException
+from fastapi.responses import FileResponse
 from typing import Optional, List
 from datetime import datetime
+from pathlib import Path
 
 from backend.database import get_photos, get_photo, get_detections_for_photo
 from ..schemas import PhotoResponse, PhotoWithDetections
@@ -86,3 +88,29 @@ def get_photo_detections(photo_id: int):
     detections = get_detections_for_photo(photo_id)
     
     return [det.to_dict() for det in detections]
+
+
+@router.get("/image/{filename}")
+def get_photo_image(filename: str):
+    """
+    Serve photo image file
+    
+    - **filename**: Photo filename (e.g., capture_20251029_123456_789.jpg)
+    """
+    # Construct file path (assuming photos are in data/photos)
+    photo_path = Path("data/photos") / filename
+    
+    # Security check - ensure filename doesn't contain path traversal
+    if ".." in filename or "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="Invalid filename")
+    
+    # Check if file exists
+    if not photo_path.exists():
+        raise HTTPException(status_code=404, detail=f"Photo file not found: {filename}")
+    
+    # Return file response
+    return FileResponse(
+        path=str(photo_path),
+        media_type="image/jpeg",
+        filename=filename
+    )

@@ -68,45 +68,41 @@ SAVE_DETECTIONS = True  # Save images with bounding boxes drawn
 # Old photos are deleted by the cleanup service, not by this script
 
 class CameraCapture:
-    """Handles camera initialization and photo capture"""
+    """Handles camera initialization and photo capture using shared camera system"""
     
     def __init__(self, photo_dir: Path, simulate: bool = False):
         self.photo_dir = photo_dir
         self.simulate = simulate
         self.camera = None
+        self.shared_camera = None
+        self.capture_buffer = None
+        self.capture_ready = threading.Event()
         
         # Create photo directory if it doesn't exist
         self.photo_dir.mkdir(parents=True, exist_ok=True)
         logger.info(f"📁 Photo directory: {self.photo_dir.absolute()}")
         
-        # Initialize camera
-        if not simulate and CAMERA_AVAILABLE:
-            self._init_camera()
+        # Initialize camera system
+        if not simulate:
+            try:
+                from backend.shared_camera import get_shared_camera
+                self.shared_camera = get_shared_camera()
+                self.shared_camera.register_capture_callback(self._on_frame_received)
+                if not self.shared_camera.is_started:
+                    self.shared_camera.start()
+                logger.info("📷 Using shared camera system")
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize shared camera: {e}")
+                self.simulate = True
+                logger.warning("🎭 Falling back to SIMULATION mode")
         else:
             logger.warning("🎭 Running in SIMULATION mode (no actual camera)")
     
-    def _init_camera(self):
-        """Initialize the Raspberry Pi camera"""
-        try:
-            self.camera = Picamera2()
-            
-            # Configure camera for still capture
-            config = self.camera.create_still_configuration(
-                main={"size": (1920, 1080)},  # Full HD
-                lores={"size": (640, 480)},   # Lower res for preview
-                display="lores"
-            )
-            self.camera.configure(config)
-            self.camera.start()
-            
-            # Give camera time to adjust to lighting
-            time.sleep(2)
-            logger.info("📷 Camera initialized successfully")
-            
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize camera: {e}")
-            self.simulate = True
-            logger.warning("🎭 Falling back to SIMULATION mode")
+    def _on_frame_received(self, frame, frame_type):
+        """Callback when shared camera provides a frame for capture"""
+        if frame_type == "capture":
+            self.capture_buffer = frame.copy()
+            self.capture_ready.set()
     
     def capture(self) -> Path:
         """Capture a single photo and return its path"""
@@ -115,11 +111,24 @@ class CameraCapture:
         filename = f"capture_{timestamp.strftime('%Y%m%d_%H%M%S_%f')[:-3]}.jpg"
         filepath = self.photo_dir / filename
         
-        if self.camera and not self.simulate:
-            # Actual camera capture
+        if self.shared_camera and not self.simulate:
+            # Using shared camera system
             try:
-                self.camera.capture_file(str(filepath))
-                logger.info(f"📸 Captured: {filename}")
+                # Wait for next frame from shared camera (with timeout)
+                self.capture_ready.clear()
+                if self.capture_ready.wait(timeout=5.0):
+                    if self.capture_buffer is not None:
+                        # Convert numpy array to PIL Image and save
+                        pil_image = Image.fromarray(self.capture_buffer)
+                        pil_image.save(filepath, 'JPEG', quality=95)
+                        logger.info(f"📸 Captured: {filename}")
+                        return filepath
+                    else:
+                        logger.error("❌ No frame data available")
+                        return None
+                else:
+                    logger.error("❌ Timeout waiting for camera frame")
+                    return None
             except Exception as e:
                 logger.error(f"❌ Capture failed: {e}")
                 return None
@@ -132,7 +141,11 @@ class CameraCapture:
     
     def cleanup(self):
         """Stop the camera and cleanup resources"""
+        if self.shared_camera:
+            self.shared_camera.remove_capture_callback(self._on_frame_received)
+            logger.info("📷 Camera capture cleanup complete")
         if self.camera:
+            # Legacy cleanup for direct camera access
             self.camera.stop()
             logger.info("📷 Camera stopped")
 
@@ -442,6 +455,16 @@ Examples:
         else:
             logger.info(f"📊 Final stats: {capture_count} total captures, {photo_count} photos remaining")
         logger.info("👋 Goodbye!")
+
+# Backward compatibility functions for __init__.py imports
+def capture_images():
+    """Legacy function wrapper for backward compatibility"""
+    main()
+
+def cleanup_old_captures():
+    """Legacy function - now handled by cleanup_service.py"""
+    logger.warning("⚠️  cleanup_old_captures() is deprecated. Use cleanup_service.py instead")
+    logger.info("💡 Run: python backend/cleanup_service.py --retention-hours 24")
 
 if __name__ == "__main__":
     main()
