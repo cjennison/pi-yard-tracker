@@ -42,6 +42,97 @@ The project uses YOLOv8 for object detection:
 Custom trained models (e.g., `models/custom_model/`) are **not** committed to git.
 Train your own custom models using the scripts in `backend/` - see [docs/PYTHON_WORKFLOW.md](docs/PYTHON_WORKFLOW.md).
 
+## Training Custom Models
+
+### Option 1: Generate Synthetic Training Data (OpenAI DALL-E 3)
+
+```bash
+# 1. Set up OpenAI API key in .env
+OPENAI_API_KEY=sk-your-key-here
+
+# 2. Generate synthetic training images (costs ~$0.04 per image)
+python backend/training/generate_training_data.py \
+    --object "coffee mug" \
+    --background "kitchen countertop with natural lighting" \
+    --count 100
+
+# 3. Prepare dataset (organize into train/val/test splits)
+python backend/training/prepare_dataset.py \
+    --input data/synthetic_training \
+    --output data/training_data \
+    --split 70 20 10 \
+    --clean
+
+# 4. Train custom model
+python backend/training/train_custom_model.py \
+    --dataset data/coffee_mug_dataset.yaml \
+    --epochs 100 \
+    --batch 8 \
+    --model n
+
+# 5. Test the trained model
+python backend/training/test_custom_model.py \
+    --model models/custom_model/weights/best.pt \
+    --images data/training_data/images/val \
+    --confidence 0.25
+```
+
+### Option 2: Download Real Images from Pexels (FREE)
+
+```bash
+# 1. Set up Pexels API key in .env (FREE - no rate limits)
+PEXELS_API_KEY=your-key-here
+
+# 2. Fetch real stock photos from Pexels
+python backend/training/fetch_images.py \
+    --query "coffee mug" \
+    --count 30 \
+    --source pexels
+
+# 3. Auto-annotate images using pre-trained YOLOv8n
+python backend/training/auto_annotate.py \
+    --input data/to_annotate \
+    --output data/to_annotate \
+    --model models/yolov8n.pt \
+    --class-ids 0
+
+# 4. Manually review and correct annotations in GUI
+python backend/training/annotation_tool.py \
+    --input data/to_annotate \
+    --class-ids 0
+
+# 5. Click "Add to Training Set" button in GUI when done annotating
+
+# 6. Prepare dataset (organize into train/val/test splits)
+python backend/training/prepare_dataset.py \
+    --input data/synthetic_training \
+    --output data/training_data \
+    --split 70 20 10 \
+    --clean
+
+# 7. Train custom model
+python backend/training/train_custom_model.py \
+    --dataset data/coffee_mug_dataset.yaml \
+    --epochs 100 \
+    --batch 8 \
+    --model n
+
+# 8. Test the trained model
+python backend/training/test_custom_model.py \
+    --model models/custom_model/weights/best.pt \
+    --images data/training_data/images/val \
+    --confidence 0.25
+```
+
+**Pro Tips:**
+
+- **Pexels method** is FREE
+- **OpenAI method** is faster but costs ~$4 for 100 images
+- You need **100-500+ images** for good model performance
+- Mix both methods for best results (diverse training data)
+- Use different search queries: "coffee mug", "white ceramic mug", "coffee cup on desk", etc.
+- Lower confidence threshold (0.01-0.10) may be needed for custom models vs pre-trained (0.25)
+
 ## Configuration
 
 Edit `.env` to adjust settings:

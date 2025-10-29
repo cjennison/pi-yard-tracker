@@ -199,7 +199,7 @@ class AnnotationVisualizer:
         output_dir.mkdir(parents=True, exist_ok=True)
         
         # Find all image files
-        image_extensions = ['.jpg', '.jpeg', '.png']
+        image_extensions = ['.jpg', '.jpeg', '.png', '.webp']
         image_files = []
         for ext in image_extensions:
             image_files.extend(input_dir.glob(f'*{ext}'))

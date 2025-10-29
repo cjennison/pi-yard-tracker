@@ -129,6 +129,7 @@ class AnnotationTool:
         self.canvas_rect = None
         self.drag_data = {"item": None, "x": 0, "y": 0}
         self.resize_handle = None
+        self.creating_box = False  # Track if we're creating a new box
         
         # Image state
         self.original_image = None
@@ -153,14 +154,14 @@ class AnnotationTool:
     
     def _find_images(self) -> List[Path]:
         """Find all images in directory"""
-        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp'}
-        images = []
+        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.webp'}
+        images = set()  # Use set to avoid duplicates
         
         for ext in image_extensions:
-            images.extend(self.input_dir.glob(f'*{ext}'))
-            images.extend(self.input_dir.glob(f'*{ext.upper()}'))
+            images.update(self.input_dir.glob(f'*{ext}'))
+            images.update(self.input_dir.glob(f'*{ext.upper()}'))
         
-        return sorted(images)
+        return sorted(list(images))
     
     def _create_widgets(self):
         """Create GUI widgets"""
@@ -191,6 +192,14 @@ class AnnotationTool:
         ttk.Button(control_frame, text="Next ➡️ (→)", command=self.next_image).pack(side=tk.LEFT, padx=5)
         ttk.Button(control_frame, text="🗑️ Delete Box (Del)", command=self.delete_box).pack(side=tk.LEFT, padx=5)
         ttk.Button(control_frame, text="💾 Save (S)", command=self.save_annotation).pack(side=tk.LEFT, padx=5)
+        
+        # Separator
+        ttk.Separator(control_frame, orient=tk.VERTICAL).pack(side=tk.LEFT, padx=10, fill=tk.Y)
+        
+        # Workflow buttons
+        ttk.Button(control_frame, text="📦 Add to Training Set", command=self.add_to_training_set, 
+                  style='Accent.TButton').pack(side=tk.LEFT, padx=5)
+        ttk.Button(control_frame, text="🧹 Clear Folder", command=self.clear_folder).pack(side=tk.LEFT, padx=5)
         
         # Canvas for image display
         canvas_frame = ttk.Frame(self.root)
@@ -401,14 +410,36 @@ class AnnotationTool:
                     self.drag_data = {"item": self.canvas_rect, "x": event.x, "y": event.y, "resize": False}
                     self.canvas.config(cursor="fleur")
                 else:
-                    # Outside box - create new box
-                    self._create_box_at_click(event.x, event.y)
+                    # Outside box - start creating new box
+                    self._start_box_creation(event.x, event.y)
         else:
-            # No box exists - create new box
-            self._create_box_at_click(event.x, event.y)
+            # No box exists - start creating new box
+            self._start_box_creation(event.x, event.y)
+    
+    def _start_box_creation(self, x: int, y: int):
+        """Start creating a new box at click position"""
+        # Delete existing box if any
+        if self.canvas_rect:
+            self.canvas.delete(self.canvas_rect)
+            self.canvas_rect = None
+        
+        # Mark that we're creating a new box
+        self.creating_box = True
+        
+        # Store start position
+        self.drag_data = {"x": x, "y": y, "creating": True}
+        
+        # Create initial rectangle (single point)
+        self.canvas_rect = self.canvas.create_rectangle(
+            x, y, x, y,
+            outline='lime',
+            width=3,
+            tags='bbox'
+        )
+        self.canvas.config(cursor="crosshair")
     
     def _create_box_at_click(self, x: int, y: int):
-        """Create new bounding box at click position"""
+        """Create new bounding box at click position (old behavior - creates fixed size box)"""
         # Default box size (100x100 pixels)
         box_size = 100
         x1 = x - box_size // 2
@@ -455,6 +486,16 @@ class AnnotationTool:
     
     def _on_canvas_drag(self, event):
         """Handle canvas drag"""
+        # Check if we're creating a new box
+        if self.drag_data.get("creating"):
+            # Update rectangle to current mouse position
+            start_x = self.drag_data["x"]
+            start_y = self.drag_data["y"]
+            
+            # Draw from top-left (start) to bottom-right (current)
+            self.canvas.coords(self.canvas_rect, start_x, start_y, event.x, event.y)
+            return
+        
         if not self.drag_data["item"]:
             return
         
@@ -513,6 +554,35 @@ class AnnotationTool:
     
     def _on_canvas_release(self, event):
         """Handle mouse release - update bounding box"""
+        # If we were creating a new box, finalize it
+        if self.drag_data.get("creating"):
+            self.creating_box = False
+            bbox = self.canvas.bbox(self.canvas_rect)
+            if bbox:
+                x1, y1, x2, y2 = bbox
+                
+                # Ensure x1 < x2 and y1 < y2
+                if x1 > x2:
+                    x1, x2 = x2, x1
+                if y1 > y2:
+                    y1, y2 = y2, y1
+                
+                # Check minimum size (at least 10x10 pixels)
+                if x2 - x1 >= 10 and y2 - y1 >= 10:
+                    # Create the bounding box from the drawn rectangle
+                    self._update_box_from_canvas_coords(x1, y1, x2, y2)
+                    self._update_status("Created new bounding box")
+                else:
+                    # Too small - delete it
+                    self.canvas.delete(self.canvas_rect)
+                    self.canvas_rect = None
+                    self.current_box = None
+                    self._update_status("Box too small - cancelled")
+            
+            self.canvas.config(cursor="")
+            self.drag_data = {"item": None, "x": 0, "y": 0}
+            return
+        
         # Only update the underlying box coordinates if we were dragging
         if self.canvas_rect and self.drag_data.get("item"):
             bbox = self.canvas.bbox(self.canvas_rect)
@@ -672,6 +742,130 @@ class AnnotationTool:
         if self.current_index < len(self.images) - 1:
             self.load_image(self.current_index + 1)
     
+    def add_to_training_set(self):
+        """Copy all annotated images to synthetic_training folder"""
+        # Get destination folder
+        dest_dir = self.input_dir.parent / 'synthetic_training'
+        dest_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Count annotated images
+        annotated_images = []
+        for image_path in self.images:
+            annotation_path = image_path.with_suffix('.txt')
+            if annotation_path.exists() and annotation_path.stat().st_size > 0:
+                annotated_images.append(image_path)
+        
+        if not annotated_images:
+            messagebox.showwarning("No Annotations", "No annotated images found to add to training set.")
+            return
+        
+        # Confirm action
+        result = messagebox.askyesno(
+            "Add to Training Set",
+            f"Copy {len(annotated_images)} annotated image(s) and their annotations to:\n{dest_dir}\n\nExisting files will be overwritten.\n\nContinue?"
+        )
+        
+        if not result:
+            return
+        
+        # Copy files
+        copied_count = 0
+        import shutil
+        
+        try:
+            for image_path in annotated_images:
+                annotation_path = image_path.with_suffix('.txt')
+                
+                # Copy image (overwrite if exists)
+                dest_image = dest_dir / image_path.name
+                shutil.copy2(str(image_path), str(dest_image))
+                
+                # Copy annotation (overwrite if exists)
+                dest_annotation = dest_dir / annotation_path.name
+                shutil.copy2(str(annotation_path), str(dest_annotation))
+                
+                copied_count += 1
+                logger.info(f"✅ Copied {image_path.name} and annotation to training set")
+            
+            # Show success message
+            messagebox.showinfo(
+                "Success",
+                f"Successfully copied {copied_count} image(s) to training set:\n{dest_dir}\n\nYou can now run prepare_dataset.py to organize them for training."
+            )
+            
+            self._update_status(f"Added {copied_count} image(s) to training set")
+        
+        except Exception as e:
+            logger.error(f"Failed to copy files: {e}")
+            messagebox.showerror("Error", f"Failed to copy files to training set:\n{e}")
+    
+    def clear_folder(self):
+        """Clear all images and annotations from the to_annotate folder"""
+        if not self.images:
+            messagebox.showinfo("Empty", "Folder is already empty.")
+            return
+        
+        # Count total files (images + annotations)
+        total_files = len(self.images)
+        annotation_count = sum(1 for img in self.images if img.with_suffix('.txt').exists())
+        
+        # Confirm action
+        result = messagebox.askyesno(
+            "Clear Folder - Confirm",
+            f"⚠️ WARNING ⚠️\n\nThis will DELETE:\n- {total_files} image(s)\n- {annotation_count} annotation(s)\n\nfrom: {self.input_dir}\n\nThis action CANNOT be undone!\n\nAre you sure?",
+            icon='warning'
+        )
+        
+        if not result:
+            return
+        
+        # Double confirmation
+        result2 = messagebox.askyesno(
+            "Final Confirmation",
+            "This is your last chance!\n\nReally delete all files?",
+            icon='warning'
+        )
+        
+        if not result2:
+            return
+        
+        # Delete files
+        deleted_images = 0
+        deleted_annotations = 0
+        
+        try:
+            for image_path in self.images:
+                # Delete image
+                if image_path.exists():
+                    image_path.unlink()
+                    deleted_images += 1
+                
+                # Delete annotation
+                annotation_path = image_path.with_suffix('.txt')
+                if annotation_path.exists():
+                    annotation_path.unlink()
+                    deleted_annotations += 1
+            
+            logger.info(f"🗑️ Deleted {deleted_images} images and {deleted_annotations} annotations")
+            
+            # Show success message
+            messagebox.showinfo(
+                "Folder Cleared",
+                f"Successfully deleted:\n- {deleted_images} image(s)\n- {deleted_annotations} annotation(s)\n\nFolder is now empty."
+            )
+            
+            # Reload image list (should be empty now)
+            self.images = self._find_images()
+            self.current_index = 0
+            self.current_box = None
+            self.canvas_rect = None
+            self.canvas.delete('all')
+            self._update_status("Folder cleared")
+        
+        except Exception as e:
+            logger.error(f"Failed to clear folder: {e}")
+            messagebox.showerror("Error", f"Failed to clear folder:\n{e}")
+    
     def run(self):
         """Start GUI main loop"""
         self.root.mainloop()
@@ -698,14 +892,14 @@ Examples:
   # Annotate images in default folder (coffee_mug = class 0)
   python backend/training/annotation_tool.py
   
-  # Annotate coffee_mug as class 80 (for 81-class model)
-  python backend/training/annotation_tool.py --class-ids 80
+  # Annotate coffee_mug as class 0 explicitly (single-class model)
+  python backend/training/annotation_tool.py --class-ids 0
   
-  # Annotate with multiple classes
-  python backend/training/annotation_tool.py --classes coffee_mug cup bowl --class-ids 80 41 45
+  # Annotate with multiple classes (for multi-class models)
+  python backend/training/annotation_tool.py --classes coffee_mug cup bowl --class-ids 0 1 2
   
   # Specify input directory
-  python backend/training/annotation_tool.py --input data/my_images --class-ids 80
+  python backend/training/annotation_tool.py --input data/my_images
         """
     )
     
@@ -729,7 +923,7 @@ Examples:
         type=int,
         nargs='+',
         default=None,
-        help='Class IDs corresponding to class names (default: 0, 1, 2...). Example: --class-ids 80 for coffee_mug'
+        help='Class IDs corresponding to class names (default: 0, 1, 2...). Example: --class-ids 0 for single-class coffee_mug model'
     )
     
     args = parser.parse_args()

@@ -53,7 +53,7 @@ class AutoAnnotator:
         Returns:
             List of image paths
         """
-        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp'}
+        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.webp'}
         images = []
         
         for ext in image_extensions:
