@@ -97,7 +97,8 @@ class BoundingBox:
 class AnnotationTool:
     """Speed annotation GUI"""
     
-    def __init__(self, input_dir: Path, class_names: List[str], class_ids: Optional[List[int]] = None):
+    def __init__(self, input_dir: Path, class_names: List[str], class_ids: Optional[List[int]] = None, 
+                 unannotated_only: bool = False):
         """
         Initialize annotation tool
         
@@ -105,9 +106,11 @@ class AnnotationTool:
             input_dir: Directory containing images to annotate
             class_names: List of class names (for display)
             class_ids: List of class IDs (for YOLO). If None, uses indices 0, 1, 2...
+            unannotated_only: If True, only show images without existing annotations
         """
         self.input_dir = Path(input_dir)
         self.class_names = class_names
+        self.unannotated_only = unannotated_only
         
         # Map class names to IDs
         if class_ids is None:
@@ -161,7 +164,21 @@ class AnnotationTool:
             images.update(self.input_dir.glob(f'*{ext}'))
             images.update(self.input_dir.glob(f'*{ext.upper()}'))
         
-        return sorted(list(images))
+        all_images = sorted(list(images))
+        
+        # Filter to only unannotated images if requested
+        if self.unannotated_only:
+            unannotated = []
+            for img_path in all_images:
+                annotation_path = img_path.with_suffix('.txt')
+                # Include if annotation doesn't exist or is empty
+                if not annotation_path.exists() or annotation_path.stat().st_size == 0:
+                    unannotated.append(img_path)
+            
+            logger.info(f"🔍 Filtering to unannotated images: {len(unannotated)}/{len(all_images)}")
+            return unannotated
+        
+        return all_images
     
     def _create_widgets(self):
         """Create GUI widgets"""
@@ -892,6 +909,9 @@ Examples:
   # Annotate images in default folder (coffee_mug = class 0)
   python backend/training/annotation_tool.py
   
+  # Annotate only unannotated images (skip already annotated ones)
+  python backend/training/annotation_tool.py --unannotated-only
+  
   # Annotate coffee_mug as class 0 explicitly (single-class model)
   python backend/training/annotation_tool.py --class-ids 0
   
@@ -926,13 +946,20 @@ Examples:
         help='Class IDs corresponding to class names (default: 0, 1, 2...). Example: --class-ids 0 for single-class coffee_mug model'
     )
     
+    parser.add_argument(
+        '--unannotated-only',
+        action='store_true',
+        help='Only show images without existing annotations (filters out already annotated images)'
+    )
+    
     args = parser.parse_args()
     
     # Create and run annotation tool
     tool = AnnotationTool(
         input_dir=args.input,
         class_names=args.classes,
-        class_ids=args.class_ids
+        class_ids=args.class_ids,
+        unannotated_only=args.unannotated_only
     )
     tool.run()
 
