@@ -1,0 +1,50 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Model files in root (keep only in models/ folder)
+/*.pt
+/*.onnx
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Photos and database
+data/
+*.db
+*.sqlite
+
+# Models - Keep base yolov8n.pt AND custom best.pt, ignore training artifacts
+models/custom_model/weights/last.pt
+models/custom_model/weights/epoch*.pt
+models/custom_model/*.csv
+models/custom_model/*.yaml
+models/*.onnx
+!models/yolov8n.pt
+!models/custom_model/weights/best.pt
+
+# Environment variables
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
