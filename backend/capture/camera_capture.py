@@ -16,6 +16,7 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import threading
 import logging
+import argparse
 
 # Try to import picamera2, but allow running without it for development
 try:
@@ -126,7 +127,12 @@ class YOLODetector:
     def __init__(self, model_name='yolov8n.pt', confidence_threshold=0.5):
         """Initialize YOLO detector"""
         self.confidence_threshold = confidence_threshold
-        self.model_path = Path('models') / model_name
+        # If model_name is already a path, use it directly; otherwise prepend 'models/'
+        model_path_input = Path(model_name)
+        if model_path_input.is_absolute() or str(model_name).startswith('models/'):
+            self.model_path = model_path_input
+        else:
+            self.model_path = Path('models') / model_name
         self.model = None
         
         if not YOLO_AVAILABLE:
@@ -295,12 +301,39 @@ class PhotoCleanup:
 
 def main():
     """Main application loop"""
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description='Pi Yard Tracker - Camera Capture with Object Detection',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Use default pre-trained model (YOLOv8n - 80 classes)
+  python backend/capture/camera_capture.py
+  
+  # Use custom trained model
+  python backend/capture/camera_capture.py --model models/custom_model/weights/best.pt
+  
+  # Adjust confidence threshold
+  python backend/capture/camera_capture.py --model models/custom_model/weights/best.pt --confidence 0.3
+        """
+    )
+    parser.add_argument('--model', type=str, default='yolov8n.pt',
+                        help='Path to YOLO model (default: yolov8n.pt)')
+    parser.add_argument('--confidence', type=float, default=CONFIDENCE_THRESHOLD,
+                        help=f'Confidence threshold for detections (default: {CONFIDENCE_THRESHOLD})')
+    parser.add_argument('--no-detection', action='store_true',
+                        help='Disable object detection (capture only)')
+    args = parser.parse_args()
+    
     logger.info("=" * 60)
     logger.info("🐾 Pi Yard Tracker - Phase 2A: Camera + Detection")
     logger.info("=" * 60)
     logger.info(f"⏱️  Capture interval: {CAPTURE_INTERVAL} second(s)")
     logger.info(f"🕐 Retention period: {RETENTION_MINUTES} minutes")
-    logger.info(f"🤖 Detection: {'Enabled' if DETECTION_ENABLED and YOLO_AVAILABLE else 'Disabled'}")
+    logger.info(f"🤖 Detection: {'Enabled' if DETECTION_ENABLED and YOLO_AVAILABLE and not args.no_detection else 'Disabled'}")
+    if not args.no_detection and YOLO_AVAILABLE:
+        logger.info(f"📦 Model: {args.model}")
+        logger.info(f"📊 Confidence: {args.confidence}")
     logger.info("=" * 60)
     
     # Check if we should simulate
@@ -312,9 +345,9 @@ def main():
     
     # Initialize detector if enabled
     detector = None
-    if DETECTION_ENABLED and YOLO_AVAILABLE:
+    if DETECTION_ENABLED and YOLO_AVAILABLE and not args.no_detection:
         try:
-            detector = YOLODetector(confidence_threshold=CONFIDENCE_THRESHOLD)
+            detector = YOLODetector(model_name=args.model, confidence_threshold=args.confidence)
         except Exception as e:
             logger.error(f"❌ Failed to initialize detector: {e}")
             logger.warning("⚠️  Continuing without detection")
