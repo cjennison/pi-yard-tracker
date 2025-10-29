@@ -32,7 +32,11 @@ See [docs/PHASE_2A_SUMMARY.md](docs/PHASE_2A_SUMMARY.md) and [docs/YOLO_EXPLAINE
 source venv/bin/activate
 uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
 
-# Start camera capture (Terminal 2)
+# Start cleanup service (Terminal 2) - deletes photos older than 24 hours
+source venv/bin/activate
+python backend/cleanup_service.py --retention-hours 24
+
+# Start camera capture (Terminal 3)
 source venv/bin/activate
 python backend/capture/camera_capture.py
 ```
@@ -44,7 +48,11 @@ python backend/capture/camera_capture.py
 source venv/bin/activate
 uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
 
-# Start camera capture with custom model (Terminal 2)
+# Start cleanup service (Terminal 2) - deletes photos older than 24 hours
+source venv/bin/activate
+python backend/cleanup_service.py --retention-hours 24
+
+# Start camera capture with custom model (Terminal 3)
 source venv/bin/activate
 python backend/capture/camera_capture.py \
     --model models/custom_model/weights/best.pt \
@@ -53,11 +61,35 @@ python backend/capture/camera_capture.py \
 
 ### View Results
 
-- **Photos**: Saved to `data/photos/` (auto-deleted after 15 minutes)
+- **Photos**: Saved to `data/photos/`
 - **Detections**: Saved to `data/photos/detections/` with bounding boxes
-- **Database**: SQLite database at `data/detections.db`
+- **Database**: SQLite database at `data/detections.db` (retains all history)
+- **Cleanup**: Old photo files automatically deleted (database records preserved)
 - **API Docs**: http://localhost:8000/docs (Swagger UI)
 - **API Health**: http://localhost:8000/health
+
+### Cleanup Service Options
+
+The cleanup service runs independently and manages disk space:
+
+```bash
+# Default: Delete files older than 24 hours, check every 5 minutes
+python backend/cleanup_service.py
+
+# Custom retention: keep files for 48 hours
+python backend/cleanup_service.py --retention-hours 48
+
+# Check more frequently: every 1 minute
+python backend/cleanup_service.py --check-interval 60
+
+# Show current storage statistics
+python backend/cleanup_service.py --stats
+
+# Run cleanup once and exit (useful for cron jobs)
+python backend/cleanup_service.py --run-once
+```
+
+**Note**: The cleanup service only deletes photo **files** from disk. All database records (photos, detections, sessions) are **preserved** indefinitely. This allows you to query historical data via the API while managing disk space.
 
 ### Query the API
 

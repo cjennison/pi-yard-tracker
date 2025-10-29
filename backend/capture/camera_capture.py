@@ -60,11 +60,12 @@ logger = logging.getLogger(__name__)
 # Configuration
 PHOTO_DIR = Path("data/photos")
 CAPTURE_INTERVAL = 1  # seconds
-RETENTION_MINUTES = 15
-CLEANUP_INTERVAL = 30  # seconds - how often to check for old files
 DETECTION_ENABLED = True  # Set to False to disable YOLO detection
-CONFIDENCE_THRESHOLD = 0.5  # Minimum confidence for detections (0.0-1.0)
+CONFIDENCE_THRESHOLD = 0.25  # Minimum confidence for detections (0.0-1.0)
 SAVE_DETECTIONS = True  # Save images with bounding boxes drawn
+
+# Note: Photo cleanup is now handled by separate cleanup_service.py
+# Old photos are deleted by the cleanup service, not by this script
 
 class CameraCapture:
     """Handles camera initialization and photo capture"""
@@ -280,56 +281,6 @@ class YOLODetector:
         except Exception as e:
             logger.error(f"❌ Failed to save visualization: {e}")
 
-class PhotoCleanup:
-    """Handles automatic deletion of old photos"""
-    
-    def __init__(self, photo_dir: Path, retention_minutes: int):
-        self.photo_dir = photo_dir
-        self.retention_minutes = retention_minutes
-        self.running = False
-        self.thread = None
-    
-    def start(self):
-        """Start the cleanup thread"""
-        self.running = True
-        self.thread = threading.Thread(target=self._cleanup_loop, daemon=True)
-        self.thread.start()
-        logger.info(f"🧹 Cleanup service started (retention: {self.retention_minutes} minutes)")
-    
-    def stop(self):
-        """Stop the cleanup thread"""
-        self.running = False
-        if self.thread:
-            self.thread.join()
-        logger.info("🧹 Cleanup service stopped")
-    
-    def _cleanup_loop(self):
-        """Continuously check and delete old photos"""
-        while self.running:
-            self._delete_old_photos()
-            time.sleep(CLEANUP_INTERVAL)
-    
-    def _delete_old_photos(self):
-        """Delete photos older than retention period"""
-        cutoff_time = datetime.now() - timedelta(minutes=self.retention_minutes)
-        deleted_count = 0
-        
-        # Find all .jpg files in photo directory
-        for photo_path in self.photo_dir.glob("*.jpg"):
-            # Get file modification time
-            file_time = datetime.fromtimestamp(photo_path.stat().st_mtime)
-            
-            # Delete if older than cutoff
-            if file_time < cutoff_time:
-                try:
-                    photo_path.unlink()
-                    deleted_count += 1
-                    logger.debug(f"🗑️  Deleted old photo: {photo_path.name}")
-                except Exception as e:
-                    logger.error(f"❌ Failed to delete {photo_path.name}: {e}")
-        
-        if deleted_count > 0:
-            logger.info(f"🗑️  Deleted {deleted_count} old photo(s)")
 
 def main():
     """Main application loop"""
@@ -358,14 +309,16 @@ Examples:
     args = parser.parse_args()
     
     logger.info("=" * 60)
-    logger.info("🐾 Pi Yard Tracker - Phase 2A: Camera + Detection")
+    logger.info("🐾 Pi Yard Tracker - Phase 3: Camera + Detection + Database")
     logger.info("=" * 60)
     logger.info(f"⏱️  Capture interval: {CAPTURE_INTERVAL} second(s)")
-    logger.info(f"🕐 Retention period: {RETENTION_MINUTES} minutes")
     logger.info(f"🤖 Detection: {'Enabled' if DETECTION_ENABLED and YOLO_AVAILABLE and not args.no_detection else 'Disabled'}")
     if not args.no_detection and YOLO_AVAILABLE:
         logger.info(f"📦 Model: {args.model}")
         logger.info(f"📊 Confidence: {args.confidence}")
+    if DATABASE_AVAILABLE:
+        logger.info(f"💾 Database: Enabled (data/detections.db)")
+    logger.info(f"🧹 Cleanup: Run cleanup_service.py separately")
     logger.info("=" * 60)
     
     # Check if we should simulate
@@ -373,7 +326,6 @@ Examples:
     
     # Initialize components
     camera = CameraCapture(PHOTO_DIR, simulate=simulate)
-    cleanup = PhotoCleanup(PHOTO_DIR, RETENTION_MINUTES)
     
     # Initialize detector if enabled
     detector = None
@@ -383,9 +335,6 @@ Examples:
         except Exception as e:
             logger.error(f"❌ Failed to initialize detector: {e}")
             logger.warning("⚠️  Continuing without detection")
-    
-    # Start cleanup service
-    cleanup.start()
     
     # Create database session if available
     session_id = None
@@ -398,8 +347,12 @@ Examples:
         except Exception as e:
             logger.warning(f"⚠️  Failed to create database session: {e}")
     
+    # Note: Photo cleanup is handled by separate cleanup_service.py
+    # Run: python backend/cleanup_service.py --retention-hours 24
+    
     try:
         logger.info("🚀 Starting capture loop (Press Ctrl+C to stop)")
+        logger.info("ℹ️  Note: Old photos are cleaned by cleanup_service.py (run separately)")
         logger.info("")
         
         capture_count = 0
@@ -479,8 +432,7 @@ Examples:
             except Exception as e:
                 logger.debug(f"⚠️  Failed to end database session: {e}")
         
-        # Cleanup
-        cleanup.stop()
+        # Cleanup camera
         camera.cleanup()
         
         # Final stats
