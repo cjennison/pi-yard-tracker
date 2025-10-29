@@ -29,9 +29,9 @@ models/*.onnx
 !models/custom_model/weights/best.pt
 
 # Image files (training data is in data/ which is already ignored)
-*.png
-*.jpg
-*.jpeg
+models/custom_model/*.png
+models/custom_model/*.jpg
+models/custom_model/*.jpeg
 
 # Environment variables
 .env
