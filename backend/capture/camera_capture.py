@@ -17,6 +17,7 @@ from datetime import datetime, timedelta
 import threading
 import logging
 import argparse
+from PIL import Image
 
 # Try to import picamera2, but allow running without it for development
 try:
@@ -34,6 +35,20 @@ try:
 except ImportError:
     YOLO_AVAILABLE = False
     print("⚠️  YOLO not available - run without detection or install: pip install ultralytics opencv-python")
+
+# Try to import database, but allow running without it
+try:
+    from backend.database import (
+        create_photo,
+        create_detection,
+        update_photo_detections,
+        create_session,
+        end_session
+    )
+    DATABASE_AVAILABLE = True
+except ImportError:
+    DATABASE_AVAILABLE = False
+    print("⚠️  Database not available - detections will not be saved to database")
 
 # Setup logging
 logging.basicConfig(
@@ -96,7 +111,7 @@ class CameraCapture:
         """Capture a single photo and return its path"""
         # Generate filename with timestamp
         timestamp = datetime.now()
-        filename = f"yard_{timestamp.strftime('%Y%m%d_%H%M%S_%f')[:-3]}.jpg"
+        filename = f"capture_{timestamp.strftime('%Y%m%d_%H%M%S_%f')[:-3]}.jpg"
         filepath = self.photo_dir / filename
         
         if self.camera and not self.simulate:
@@ -162,7 +177,7 @@ class YOLODetector:
         Detect objects in an image
         
         Returns:
-            List of detections with class, confidence, and bbox
+            List of detections with class, confidence, bbox (pixel coords), and bbox_norm (0-1)
         """
         if not self.model:
             return []
@@ -172,6 +187,10 @@ class YOLODetector:
             return []
         
         try:
+            # Get image dimensions for normalization
+            img = Image.open(image_path)
+            img_width, img_height = img.size
+            
             # Run detection
             start_time = time.time()
             results = self.model.predict(
@@ -189,12 +208,25 @@ class YOLODetector:
                 class_id = int(box.cls[0])
                 class_name = self.class_names[class_id]
                 confidence = float(box.conf[0])
-                bbox = box.xyxy[0].tolist()
+                bbox_xyxy = box.xyxy[0].tolist()  # [x1, y1, x2, y2] in pixels
+                
+                # Convert to center coordinates (normalized 0-1)
+                x1, y1, x2, y2 = bbox_xyxy
+                center_x = ((x1 + x2) / 2) / img_width
+                center_y = ((y1 + y2) / 2) / img_height
+                width = (x2 - x1) / img_width
+                height = (y2 - y1) / img_height
                 
                 detections.append({
                     'class': class_name,
                     'confidence': confidence,
-                    'bbox': bbox
+                    'bbox': bbox_xyxy,  # Pixel coordinates for visualization
+                    'bbox_norm': {  # Normalized coordinates for database
+                        'x': center_x,
+                        'y': center_y,
+                        'width': width,
+                        'height': height
+                    }
                 })
             
             # Log results
@@ -355,6 +387,17 @@ Examples:
     # Start cleanup service
     cleanup.start()
     
+    # Create database session if available
+    session_id = None
+    if DATABASE_AVAILABLE and detector:
+        try:
+            session_id = create_session(
+                model_name=args.model,
+                confidence_threshold=args.confidence
+            )
+        except Exception as e:
+            logger.warning(f"⚠️  Failed to create database session: {e}")
+    
     try:
         logger.info("🚀 Starting capture loop (Press Ctrl+C to stop)")
         logger.info("")
@@ -368,12 +411,51 @@ Examples:
             
             if photo_path:
                 capture_count += 1
+                photo_id = None
+                
+                # Save photo to database if available
+                if DATABASE_AVAILABLE:
+                    try:
+                        # Get image dimensions
+                        img = Image.open(photo_path)
+                        width, height = img.size
+                        
+                        photo_id = create_photo(
+                            filename=photo_path.name,
+                            filepath=str(photo_path.absolute()),
+                            width=width,
+                            height=height,
+                            captured_at=datetime.now()
+                        )
+                    except Exception as e:
+                        logger.debug(f"⚠️  Failed to save photo to database: {e}")
                 
                 # Run detection if enabled
                 if detector:
                     detections = detector.detect(photo_path, save_visualization=SAVE_DETECTIONS)
                     if detections:
                         detection_count += 1
+                        
+                        # Save detections to database if available
+                        if DATABASE_AVAILABLE and photo_id:
+                            try:
+                                for det in detections:
+                                    bbox_norm = det['bbox_norm']
+                                    create_detection(
+                                        photo_id=photo_id,
+                                        class_name=det['class'],
+                                        confidence=det['confidence'],
+                                        bbox_x=bbox_norm['x'],
+                                        bbox_y=bbox_norm['y'],
+                                        bbox_width=bbox_norm['width'],
+                                        bbox_height=bbox_norm['height'],
+                                        model_name=args.model
+                                    )
+                                
+                                # Update photo detection count
+                                update_photo_detections(photo_id, len(detections))
+                            except Exception as e:
+                                logger.debug(f"⚠️  Failed to save detections to database: {e}")
             
             # Show stats every 10 captures
             if capture_count % 10 == 0:
@@ -390,6 +472,13 @@ Examples:
         logger.info("")
         logger.info("⏸️  Shutting down...")
     finally:
+        # End database session if active
+        if DATABASE_AVAILABLE and session_id:
+            try:
+                end_session(session_id, capture_count, detection_count)
+            except Exception as e:
+                logger.debug(f"⚠️  Failed to end database session: {e}")
+        
         # Cleanup
         cleanup.stop()
         camera.cleanup()

@@ -4,30 +4,82 @@ Wildlife monitoring system for Raspberry Pi with local AI detection and web visu
 
 ## 🎉 What We've Built So Far
 
-**Phase 1 & 2A are complete!** The system can now:
+**Phases 1, 2A, 2B, and 3 are complete!** The system can now:
 
 - 📷 Capture photos from Raspberry Pi camera every second
 - 💾 Store full HD images (1920x1080) locally
-- 🤖 Detect objects using YOLOv8n AI model (~420ms per photo)
-- 🎯 Identify 80 object classes (person, dog, cat, bird, etc.)
+- 🤖 Detect objects using YOLOv8n AI model (~300-400ms per photo)
+- 🎯 Identify 80 object classes (person, dog, cat, bird, etc.) OR custom classes
+- 🎨 Train custom models for specific objects (e.g., coffee mugs, specific animals)
 - 🖼️ Save images with bounding boxes drawn around detected objects
 - 🗑️ Automatically delete photos older than 15 minutes
 - 📊 Log detection results in real-time
+- 💾 Store photos and detections in SQLite database
+- 🌐 REST API for querying photos, detections, and statistics
+- 📈 Interactive API documentation (Swagger UI)
 
-See [docs/PHASE_1_SUMMARY.md](docs/PHASE_1_SUMMARY.md) and [docs/YOLO_EXPLAINED.md](docs/YOLO_EXPLAINED.md) for details.
+See [docs/PHASE_2A_SUMMARY.md](docs/PHASE_2A_SUMMARY.md) and [docs/YOLO_EXPLAINED.md](docs/YOLO_EXPLAINED.md) for details.
 
 ## Quick Start
+
+### Option 1: Run with Pre-trained Model (80 Classes)
 
 ```bash
 # Initial setup (run once)
 ./setup.sh
 
-# Run camera capture
+# Start API server (Terminal 1)
 source venv/bin/activate
-python backend/camera_capture.py
+uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
+
+# Start camera capture (Terminal 2)
+source venv/bin/activate
+python backend/capture/camera_capture.py
 ```
 
-Photos are saved to `data/photos/` and automatically deleted after 15 minutes.
+### Option 2: Run with Custom Trained Model
+
+```bash
+# Start API server (Terminal 1)
+source venv/bin/activate
+uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
+
+# Start camera capture with custom model (Terminal 2)
+source venv/bin/activate
+python backend/capture/camera_capture.py \
+    --model models/custom_model/weights/best.pt \
+    --confidence 0.25
+```
+
+### View Results
+
+- **Photos**: Saved to `data/photos/` (auto-deleted after 15 minutes)
+- **Detections**: Saved to `data/photos/detections/` with bounding boxes
+- **Database**: SQLite database at `data/detections.db`
+- **API Docs**: http://localhost:8000/docs (Swagger UI)
+- **API Health**: http://localhost:8000/health
+
+### Query the API
+
+```bash
+# Get overall statistics
+curl http://localhost:8000/stats | python3 -m json.tool
+
+# Get recent photos
+curl http://localhost:8000/photos/?limit=10 | python3 -m json.tool
+
+# Get photos with detections only
+curl "http://localhost:8000/photos/?has_detections=true&limit=10" | python3 -m json.tool
+
+# Get recent detections
+curl http://localhost:8000/detections/?limit=10 | python3 -m json.tool
+
+# Get specific class detections (e.g., coffee_mug)
+curl "http://localhost:8000/detections/?class_name=coffee_mug&min_confidence=0.5" | python3 -m json.tool
+
+# Get detection class breakdown
+curl http://localhost:8000/detections/classes | python3 -m json.tool
+```
 
 ## Models
 
@@ -165,24 +217,35 @@ Or edit `backend/camera_capture.py` directly:
 ✅ **Phase 2A: Object Detection - Pre-trained Model** (COMPLETE)
 
 - YOLOv8n integration (~6MB model)
-- Real-time detection on every photo (~420ms)
+- Real-time detection on every photo (~300-400ms)
 - 80 object classes (person, animals, vehicles, etc.)
 - Bounding box visualization
 - Detection logging
 
-🔄 **Phase 2B: Synthetic Training Data Generation** (IN PROGRESS)
+✅ **Phase 2B: Custom Model Training** (COMPLETE)
 
-- Generate realistic training images using AI (DALL-E 3)
+- Synthetic training data generation using AI (DALL-E 3)
+- Real image fetching from Pexels (FREE)
 - Automatic YOLO-format annotations
-- No need for 1000+ manual photos!
+- Manual annotation GUI tool
+- Transfer learning from YOLOv8n
+- Custom model deployment
 - See [docs/SYNTHETIC_DATA_GENERATION.md](docs/SYNTHETIC_DATA_GENERATION.md)
 
-⬜ **Phase 3: Metadata Storage & API** (Next)
+✅ **Phase 3: Database & REST API** (COMPLETE)
 
-- SQLite database for detections
-- FastAPI REST endpoints
+- SQLite database for photos and detections
+- FastAPI REST API with Swagger UI
+- Pagination, filtering, and statistics endpoints
+- Session tracking
+- See [backend/database/README.md](backend/database/README.md) and [backend/api/README.md](backend/api/README.md)
 
-⬜ **Phase 4: Web Interface - Basic View**
+⬜ **Phase 4: Web Interface - Basic View** (Next)
+
+- Photo gallery view
+- Detection timeline
+- Real-time statistics dashboard
+
 ⬜ **Phase 4.5: Live Camera View & Real-Time Detection** 🎥
 ⬜ **Phase 5: Timeline Visualization**
 ⬜ **Phase 6: Polish & Optimization**
