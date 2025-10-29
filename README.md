@@ -5,6 +5,7 @@ Wildlife monitoring system for Raspberry Pi with local AI detection and web visu
 ## 🎉 What We've Built So Far
 
 **Phase 1 & 2A are complete!** The system can now:
+
 - 📷 Capture photos from Raspberry Pi camera every second
 - 💾 Store full HD images (1920x1080) locally
 - 🤖 Detect objects using YOLOv8n AI model (~420ms per photo)
@@ -44,11 +45,13 @@ Train your own custom models using the scripts in `backend/` - see [docs/PYTHON_
 ## Configuration
 
 Edit `.env` to adjust settings:
+
 - `CAPTURE_INTERVAL`: Seconds between photos (default: 1)
 - `RETENTION_MINUTES`: How long to keep photos (default: 15)
 - `CLEANUP_INTERVAL`: How often to check for old files (default: 30)
 
 Or edit `backend/camera_capture.py` directly:
+
 - `DETECTION_ENABLED`: Enable/disable YOLO detection (default: True)
 - `CONFIDENCE_THRESHOLD`: Minimum confidence for detections (default: 0.5)
 - `SAVE_DETECTIONS`: Save images with bounding boxes (default: True)
@@ -62,12 +65,14 @@ Or edit `backend/camera_capture.py` directly:
 ## Project Status
 
 ✅ **Phase 1: Camera Capture & Basic Storage** (COMPLETE)
+
 - Camera initialization and configuration
 - 1-second interval photo capture
 - Automatic 15-minute retention cleanup
 - Logging and statistics
 
 ✅ **Phase 2A: Object Detection - Pre-trained Model** (COMPLETE)
+
 - YOLOv8n integration (~6MB model)
 - Real-time detection on every photo (~420ms)
 - 80 object classes (person, animals, vehicles, etc.)
@@ -75,12 +80,14 @@ Or edit `backend/camera_capture.py` directly:
 - Detection logging
 
 🔄 **Phase 2B: Synthetic Training Data Generation** (IN PROGRESS)
+
 - Generate realistic training images using AI (DALL-E 3)
 - Automatic YOLO-format annotations
 - No need for 1000+ manual photos!
 - See [docs/SYNTHETIC_DATA_GENERATION.md](docs/SYNTHETIC_DATA_GENERATION.md)
 
 ⬜ **Phase 3: Metadata Storage & API** (Next)
+
 - SQLite database for detections
 - FastAPI REST endpoints
 

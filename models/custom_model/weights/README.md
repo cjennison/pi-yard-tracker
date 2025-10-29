@@ -15,6 +15,7 @@ models/custom_model/weights/best.pt
 See [`models/README.md`](../../README.md) or [`.github/copilot-instructions.md`](../../../.github/copilot-instructions.md) for complete training workflow.
 
 **Quick Start:**
+
 1. Train on GPU machine: `python backend/train_custom_model.py --dataset data/deer_dataset.yaml --epochs 100`
 2. Copy `best.pt` to this directory
 3. Commit to git: `git add best.pt && git commit -m "Add trained deer model"`

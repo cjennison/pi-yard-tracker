@@ -5,9 +5,11 @@ Custom YOLO model training pipeline. **Must run on powerful machine with GPU.**
 ## Scripts
 
 ### `generate_training_data.py`
+
 Generate synthetic training images using OpenAI DALL-E 3.
 
 **Usage:**
+
 ```bash
 # From scratch
 python backend/training/generate_training_data.py \
@@ -23,9 +25,11 @@ python backend/training/generate_training_data.py \
 ```
 
 ### `prepare_dataset.py`
+
 Organize images into YOLO train/val/test structure.
 
 **Usage:**
+
 ```bash
 python backend/training/prepare_dataset.py \
     --input data/synthetic_training \
@@ -34,9 +38,11 @@ python backend/training/prepare_dataset.py \
 ```
 
 ### `train_custom_model.py`
+
 Train custom YOLO model with transfer learning.
 
 **Usage:**
+
 ```bash
 python backend/training/train_custom_model.py \
     --dataset data/deer_dataset.yaml \
@@ -47,9 +53,11 @@ python backend/training/train_custom_model.py \
 ⚠️ **Requires GPU machine** - will kill Raspberry Pi!
 
 ### `test_custom_model.py`
+
 Test trained model on validation images.
 
 **Usage:**
+
 ```bash
 python backend/training/test_custom_model.py \
     --model models/custom_model/weights/best.pt \
@@ -57,9 +65,11 @@ python backend/training/test_custom_model.py \
 ```
 
 ### `visualize_annotations.py`
+
 Draw bounding boxes to verify annotations.
 
 **Usage:**
+
 ```bash
 python backend/training/visualize_annotations.py \
     --input data/synthetic_training \
@@ -67,17 +77,21 @@ python backend/training/visualize_annotations.py \
 ```
 
 ### `cleanup_dataset.py`
+
 Remove training data and models.
 
 **Usage:**
+
 ```bash
 python backend/training/cleanup_dataset.py --all
 ```
 
 ### `workflow.py`
+
 Complete end-to-end training pipeline.
 
 **Usage:**
+
 ```bash
 python backend/training/workflow.py \
     --base-image photos/backyard.jpg \

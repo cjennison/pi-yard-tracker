@@ -5,12 +5,14 @@
 **Pi Yard Tracker** is a Raspberry Pi-based wildlife detection system that uses computer vision to identify and track animals in a backyard setting. The project runs locally on a Raspberry Pi 5 with an OV5647 camera module, performing real-time object detection using YOLO models.
 
 ### Key Features
+
 - **Local Processing**: All AI inference runs on-device, no cloud dependency
 - **Custom Training**: Supports training custom YOLO models for specific animals (e.g., deer)
 - **Synthetic Data Generation**: Uses OpenAI DALL-E 3 to generate training images when real photos aren't available
 - **Automated Workflow**: Python scripts handle the complete pipeline from data generation to model testing
 
 ### Hardware Requirements
+
 - Raspberry Pi 5 Model B (8GB recommended for inference, training requires external machine)
 - OV5647 Camera Module (picamera2 compatible)
 - MicroSD card (32GB+)
@@ -60,6 +62,7 @@ pi-yard-tracker/
 ## Model Setup and Expectations
 
 ### Pre-trained Model (YOLOv8n)
+
 - **Location**: `models/yolov8n.pt`
 - **Status**: ✅ COMMITTED to git (6.3 MB)
 - **Purpose**: Base model for detection and transfer learning
@@ -68,6 +71,7 @@ pi-yard-tracker/
 - **Download**: Automatically downloaded by ultralytics if missing, but we commit it for offline use
 
 ### Custom Model (Custom Deer Detector)
+
 - **Location**: `models/custom_model/weights/best.pt`
 - **Status**: ⚠️ MUST BE COMMITTED when trained
 - **Purpose**: Production model for specific animal detection (e.g., deer)
@@ -76,6 +80,7 @@ pi-yard-tracker/
 - **Size**: ~6-10 MB (similar to base model)
 
 ### .gitignore Configuration
+
 ```gitignore
 # Keep base model
 !models/yolov8n.pt
@@ -96,11 +101,13 @@ models/custom_model/*.yaml
 ### Model Training Workflow (External Machine)
 
 **The Raspberry Pi CANNOT train models** - it will run out of memory. Training must be done on a machine with:
+
 - GPU (NVIDIA recommended, 8GB+ VRAM)
 - 16GB+ RAM
 - Ubuntu/Linux or Windows with WSL2
 
 **Training Steps:**
+
 1. Clone this repo on powerful machine
 2. Generate synthetic training data: `python backend/generate_training_data.py --count 100`
 3. Prepare dataset: `python backend/training/prepare_dataset.py`
@@ -111,14 +118,17 @@ models/custom_model/*.yaml
 ## Backend Scripts Reference
 
 ### capture/camera_capture.py
+
 **Purpose**: Camera control and continuous image capture
 
 **Key Functions:**
+
 - `capture_images()`: Main loop capturing at 1 FPS
 - `cleanup_old_captures()`: Auto-delete images older than 24 hours
 - Uses picamera2 (must be installed system-wide on Pi)
 
 **Usage:**
+
 ```bash
 python backend/capture/camera_capture.py --interval 1.0 --output data/photos
 ```
@@ -128,15 +138,18 @@ python backend/capture/camera_capture.py --interval 1.0 --output data/photos
 ---
 
 ### detection/detector.py
+
 **Purpose**: YOLO object detection on images
 
 **Key Classes:**
+
 - `YOLODetector`: Wraps ultralytics YOLO model
   - `detect_objects()`: Run inference on image
   - `filter_animals()`: Filter for animal classes only
   - `save_detections()`: Save images with bounding boxes
 
 **Usage:**
+
 ```bash
 python backend/detection/detector.py --model models/yolov8n.pt --source data/photos/
 ```
@@ -148,9 +161,11 @@ python backend/detection/detector.py --model models/yolov8n.pt --source data/pho
 ---
 
 ### training/generate_training_data.py
+
 **Purpose**: Generate synthetic training images using OpenAI DALL-E 3
 
 **Key Classes:**
+
 - `SyntheticDataGenerator`: Handles image generation and annotation
   - `generate_image()`: Create image via DALL-E 3
   - `_edit_image_with_object()`: Scene-matching generation (GPT-4o Vision + DALL-E 3)
@@ -158,7 +173,9 @@ python backend/detection/detector.py --model models/yolov8n.pt --source data/pho
   - `generate_training_sample()`: Complete image + annotation generation
 
 **Two Modes:**
+
 1. **From Scratch**: Generate based on text description
+
    ```bash
    python backend/training/generate_training_data.py \
        --object "white-tailed deer" \
@@ -177,6 +194,7 @@ python backend/detection/detector.py --model models/yolov8n.pt --source data/pho
 **Auto-Annotation**: Uses pre-trained YOLOv8n to detect actual object positions (not assumed centered)
 
 **Output**: YOLO format annotations (.txt files)
+
 ```
 0 0.49 0.56 0.29 0.60
 # class_id x_center y_center width height (all normalized 0-1)
@@ -191,9 +209,11 @@ python backend/detection/detector.py --model models/yolov8n.pt --source data/pho
 ---
 
 ### prepare_dataset.py
+
 **Purpose**: Organize synthetic data into YOLO train/val/test structure
 
 **Key Classes:**
+
 - `DatasetPreparer`: Dataset organization and splitting
   - `create_directory_structure()`: Create YOLO folders
   - `find_image_label_pairs()`: Validate image-annotation pairs
@@ -201,6 +221,7 @@ python backend/detection/detector.py --model models/yolov8n.pt --source data/pho
   - `copy_files()`: Copy to train/val/test directories
 
 **Usage:**
+
 ```bash
 python backend/training/prepare_dataset.py \
     --input data/synthetic_training \
@@ -218,19 +239,23 @@ python backend/training/prepare_dataset.py \
 ---
 
 ### train_custom_model.py
+
 **Purpose**: Train custom YOLO model using transfer learning
 
 **Key Functions:**
+
 - `validate_dataset()`: Check dataset structure and paths
 - `train_model()`: Execute training with ultralytics
 
 **Training Configuration:**
+
 - **Transfer Learning**: Starts from YOLOv8n pre-trained weights
 - **Optimizer**: Adam
 - **Augmentation**: Automatic (mosaic, mixup, HSV)
 - **Early Stopping**: Monitors validation loss
 
 **Usage:**
+
 ```bash
 python backend/training/train_custom_model.py \
     --dataset data/deer_dataset.yaml \
@@ -250,13 +275,16 @@ python backend/training/train_custom_model.py \
 ---
 
 ### test_custom_model.py
+
 **Purpose**: Test trained model on validation images
 
 **Key Functions:**
+
 - `test_model()`: Run inference on image directory
 - Calculates detection statistics (total detections, confidence scores)
 
 **Usage:**
+
 ```bash
 python backend/training/test_custom_model.py \
     --model models/custom_model/weights/best.pt \
@@ -272,9 +300,11 @@ python backend/training/test_custom_model.py \
 ---
 
 ### visualize_annotations.py
+
 **Purpose**: Draw bounding boxes on images to verify annotations
 
 **Key Classes:**
+
 - `AnnotationVisualizer`: Annotation visualization
   - `parse_yolo_annotation()`: Read YOLO .txt files
   - `draw_box()`: Draw bounding box with label
@@ -282,6 +312,7 @@ python backend/training/test_custom_model.py \
   - `visualize_dataset()`: Process entire directory
 
 **Usage:**
+
 ```bash
 python backend/training/visualize_annotations.py \
     --input data/synthetic_training \
@@ -297,9 +328,11 @@ python backend/training/visualize_annotations.py \
 ---
 
 ### cleanup_dataset.py
+
 **Purpose**: Remove training data and models to start fresh
 
 **Key Classes:**
+
 - `DatasetCleaner`: Dataset cleanup operations
   - `clean_synthetic_training()`: Remove generated images
   - `clean_prepared_dataset()`: Remove train/val/test splits
@@ -307,6 +340,7 @@ python backend/training/visualize_annotations.py \
   - `clean_all()`: Remove everything
 
 **Usage:**
+
 ```bash
 # Remove everything
 python backend/training/cleanup_dataset.py --all
@@ -324,9 +358,11 @@ python backend/training/cleanup_dataset.py --models-only
 ---
 
 ### workflow.py
+
 **Purpose**: Orchestrate complete training pipeline
 
 **Key Classes:**
+
 - `TrainingWorkflow`: End-to-end pipeline orchestration
   - `step_generate_data()`: Generate synthetic images
   - `step_prepare_dataset()`: Organize dataset
@@ -335,6 +371,7 @@ python backend/training/cleanup_dataset.py --models-only
   - `step_test_model()`: Test trained model
 
 **Usage:**
+
 ```bash
 # Full workflow
 python backend/training/workflow.py \
@@ -349,7 +386,8 @@ python backend/training/workflow.py \
     --epochs 100
 ```
 
-**Features**: 
+**Features**:
+
 - Step-by-step logging
 - Time tracking per step
 - Skip/resume capabilities
@@ -362,6 +400,7 @@ python backend/training/workflow.py \
 ## Python Coding Best Practices for This Project
 
 ### 1. Virtual Environment
+
 ```bash
 # Create venv with system-site-packages (for picamera2 access)
 python3 -m venv venv --system-site-packages
@@ -370,6 +409,7 @@ pip install -r requirements.txt
 ```
 
 ### 2. Imports Organization
+
 ```python
 # Standard library
 import argparse
@@ -386,6 +426,7 @@ from backend.detector import YOLODetector
 ```
 
 ### 3. Logging (Always Use)
+
 ```python
 import logging
 
@@ -398,6 +439,7 @@ logger.error("❌ Error message")
 ```
 
 ### 4. Path Handling (Use pathlib)
+
 ```python
 from pathlib import Path
 
@@ -413,6 +455,7 @@ image_path = output_dir + '/image_' + str(i) + '.jpg'
 ```
 
 ### 5. Error Handling
+
 ```python
 try:
     model = YOLO('models/yolov8n.pt')
@@ -422,6 +465,7 @@ except Exception as e:
 ```
 
 ### 6. Type Hints
+
 ```python
 from pathlib import Path
 from typing import Optional, Tuple, List
@@ -429,11 +473,11 @@ from typing import Optional, Tuple, List
 def detect_objects(self, image_path: Path, confidence: float = 0.5) -> List[dict]:
     """
     Detect objects in image
-    
+
     Args:
         image_path: Path to input image
         confidence: Minimum confidence threshold
-        
+
     Returns:
         List of detection dictionaries
     """
@@ -441,6 +485,7 @@ def detect_objects(self, image_path: Path, confidence: float = 0.5) -> List[dict
 ```
 
 ### 7. CLI Arguments (argparse)
+
 ```python
 parser = argparse.ArgumentParser(
     description='Script description',
@@ -456,26 +501,28 @@ args = parser.parse_args()
 ```
 
 ### 8. Class Structure
+
 ```python
 class YOLODetector:
     """Handles YOLO object detection"""
-    
+
     def __init__(self, model_path: Path):
         """Initialize detector with model"""
         self.model_path = Path(model_path)
         self.model = None
         self._load_model()
-    
+
     def _load_model(self):
         """Private method for model loading"""
         pass
-    
+
     def detect_objects(self, image_path: Path) -> List[dict]:
         """Public method for detection"""
         pass
 ```
 
 ### 9. Constants at Module Level
+
 ```python
 # At top of file after imports
 DEFAULT_CONFIDENCE = 0.25
@@ -484,14 +531,15 @@ OUTPUT_DIR = Path('data/detections')
 ```
 
 ### 10. Main Guard
+
 ```python
 def main():
     """Main function"""
     parser = argparse.ArgumentParser(...)
     args = parser.parse_args()
-    
+
     # Main logic here
-    
+
 if __name__ == "__main__":
     main()
 ```
@@ -499,41 +547,49 @@ if __name__ == "__main__":
 ## YOLO Format Reference
 
 ### Annotation Format (.txt files)
+
 ```
 class_id x_center y_center width height
 0 0.49 0.56 0.29 0.60
 ```
+
 - All coordinates normalized 0-1 (relative to image dimensions)
 - One line per object
 - Same filename as image (e.g., `image.jpg` → `image.txt`)
 
 ### Dataset Configuration (deer_dataset.yaml)
+
 ```yaml
 path: /absolute/path/to/data/training_data
 train: images/train
 val: images/val
-test: images/test  # optional
+test: images/test # optional
 
-nc: 1              # number of classes
+nc: 1 # number of classes
 names:
-  0: deer          # class mapping
+  0: deer # class mapping
 ```
 
 ## Common Issues and Solutions
 
 ### Issue: picamera2 not found
+
 **Solution**: Install system-wide, create venv with `--system-site-packages`
 
 ### Issue: Training kills Raspberry Pi
+
 **Solution**: Train on powerful machine, copy `best.pt` back to Pi
 
 ### Issue: No animals detected in generated images
+
 **Solution**: DALL-E 3 sometimes generates abstract images. Verify with `visualize_annotations.py`, regenerate if needed.
 
 ### Issue: OpenAI API errors
+
 **Solution**: Check `.env` has valid `OPENAI_API_KEY`, check billing/limits
 
 ### Issue: Model not found
+
 **Solution**: Ensure `models/custom_model/weights/best.pt` exists and is committed to git
 
 ## Development Workflow
@@ -557,6 +613,7 @@ names:
 ## Environment Variables
 
 Required in `.env`:
+
 ```bash
 # Optional: Only needed for synthetic data generation
 OPENAI_API_KEY=sk-...
@@ -570,7 +627,7 @@ OPENAI_API_KEY=sk-...
 4. **Add docstrings** to all functions and classes
 5. **Handle errors gracefully** with try/except and logging
 6. **Use argparse** for CLI scripts
-7. **Follow existing code style** (see backend/*.py for examples)
+7. **Follow existing code style** (see backend/\*.py for examples)
 8. **Test on actual Raspberry Pi** when possible (especially camera/picamera2 code)
 9. **Remember**: Training happens on powerful machine, inference on Pi
 10. **Commit trained models**: `best.pt` must be in git for deployment
@@ -578,6 +635,7 @@ OPENAI_API_KEY=sk-...
 ## Model Deployment Checklist
 
 Before committing:
+
 - [ ] Model trained with 100+ images
 - [ ] Validation accuracy >70%
 - [ ] Tested on real backyard photos

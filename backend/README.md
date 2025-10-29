@@ -26,6 +26,7 @@ backend/
 ## Module Overview
 
 ### 📷 Capture
+
 **Location**: `backend/capture/`  
 **Purpose**: Image capture from Raspberry Pi camera module  
 **Runs on**: Raspberry Pi only  
@@ -34,6 +35,7 @@ backend/
 Handles continuous image capture at 1 FPS with automatic cleanup of old images.
 
 ### 🔍 Detection
+
 **Location**: `backend/detection/`  
 **Purpose**: YOLO object detection on images  
 **Runs on**: Raspberry Pi or any machine  
@@ -42,12 +44,14 @@ Handles continuous image capture at 1 FPS with automatic cleanup of old images.
 Performs object detection using pre-trained or custom YOLO models. Can run on Pi for inference.
 
 ### 🎓 Training
+
 **Location**: `backend/training/`  
 **Purpose**: Custom model training pipeline  
 **Runs on**: ⚠️ **GPU machine ONLY** (NOT Raspberry Pi)  
 **Key Script**: `workflow.py` (orchestrates all steps)
 
 Complete pipeline for:
+
 1. Synthetic data generation (OpenAI DALL-E 3)
 2. Dataset preparation (train/val/test splits)
 3. Annotation visualization
@@ -91,6 +95,7 @@ scp models/custom_model/weights/best.pt pi@raspberrypi:~/pi-yard-tracker/models/
 See [requirements.txt](../requirements.txt) for all dependencies.
 
 **System Requirements:**
+
 - **Raspberry Pi**: picamera2 (system-wide)
 - **GPU Machine**: NVIDIA GPU with 8GB+ VRAM (for training)
 
@@ -114,17 +119,20 @@ OPENAI_API_KEY=sk-...
 ## Common Workflows
 
 ### Development Workflow (Full Pipeline)
+
 1. **On Pi**: Capture real backyard photos
 2. **On GPU machine**: Generate synthetic data, train model
 3. **Transfer**: Copy `best.pt` back to Pi
 4. **On Pi**: Run detection with custom model
 
 ### Testing Workflow
+
 1. **On GPU machine**: Generate test data, train small model
 2. **On GPU machine**: Test model accuracy
 3. **Transfer**: Deploy to Pi if satisfactory
 
 ### Production Workflow
+
 1. **On Pi**: Continuous capture at 1 FPS
 2. **On Pi**: Detection runs on new images
 3. **Future**: Database stores detections, API serves results

@@ -5,10 +5,11 @@ This directory contains YOLO models used for wildlife detection.
 ## Files
 
 ### `yolov8n.pt` (Pre-trained Base Model)
+
 - **Size**: 6.3 MB
 - **Status**: ✅ Committed to git
 - **Classes**: 80 COCO classes (person, car, dog, cat, bird, etc.)
-- **Purpose**: 
+- **Purpose**:
   - Base detection for general objects
   - Transfer learning starting point
   - Auto-annotation of synthetic training data
@@ -16,6 +17,7 @@ This directory contains YOLO models used for wildlife detection.
 - **Performance on Pi 5**: ~420ms inference time
 
 ### `custom_model/weights/best.pt` (Custom Trained Model)
+
 - **Size**: ~6-10 MB (when trained)
 - **Status**: ⚠️ TO BE ADDED after training
 - **Classes**: 1 class (deer) - defined in `data/deer_dataset.yaml`
@@ -57,11 +59,10 @@ python backend/detector.py --model models/custom_model/weights/best.pt --source 
 
 ## Model Requirements
 
-- **Training Machine**: 
+- **Training Machine**:
   - GPU: NVIDIA with 8GB+ VRAM (recommended)
   - RAM: 16GB+
   - OS: Ubuntu/Linux or Windows with WSL2
-  
 - **Raspberry Pi** (Inference only):
   - Model: Pi 5 Model B
   - RAM: 8GB recommended
@@ -70,6 +71,7 @@ python backend/detector.py --model models/custom_model/weights/best.pt --source 
 ## .gitignore Configuration
 
 The `.gitignore` is configured to:
+
 - ✅ Keep `yolov8n.pt` (base model)
 - ✅ Keep `custom_model/weights/best.pt` (custom trained model)
 - ❌ Ignore training artifacts (`last.pt`, `epoch*.pt`, `results.csv`, etc.)
@@ -92,12 +94,14 @@ models/
 ## Model Performance Expectations
 
 ### Pre-trained YOLOv8n (COCO):
+
 - General object detection
 - 80 classes
 - May detect deer as "sheep", "dog", or "horse" (closest COCO classes)
 - Confidence: 40-60% on wildlife
 
 ### Custom Trained Model (Deer):
+
 - **With 50 images**: 60-75% accuracy
 - **With 100 images**: 75-85% accuracy
 - **With 200+ images**: 85-95% accuracy
@@ -118,16 +122,19 @@ python backend/test_custom_model.py \
 ## Troubleshooting
 
 ### Model not found
+
 - Ensure `yolov8n.pt` exists (should be committed in git)
 - For custom model: Check if `best.pt` was trained and committed
 - Try: `git lfs pull` if using Git LFS for large files
 
 ### Out of memory during training
+
 - Reduce batch size: `--batch 8` or `--batch 4`
 - Use smaller model: `--model n` (nano) instead of `s` (small)
 - Train on more powerful machine (NOT Raspberry Pi)
 
 ### Poor detection accuracy
+
 - Need more training images (100+ recommended)
 - Verify annotations with `visualize_annotations.py`
 - Train for more epochs: `--epochs 100` or `--epochs 200`
