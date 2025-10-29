@@ -1,0 +1,18 @@
+# Multi-Object Detection Dataset Configuration
+# YOLO format dataset configuration - MULTI-CLASS SUPPORT
+
+# Dataset path (absolute path to training_data directory)
+path: c:\Users\cjenn\src\kiiro\pi-yard-tracker\data\training_data
+
+# Relative paths from 'path' to train/val/test image directories
+train: images/train
+val: images/val
+test: images/test
+
+# Number of classes (multi-class detection)
+nc: 2
+
+# Class names (0-indexed)
+names:
+  0: coffee_mug
+  1: cellphone

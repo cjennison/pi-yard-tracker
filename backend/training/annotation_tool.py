@@ -125,11 +125,14 @@ class AnnotationTool:
         
         self.images = self._find_images()
         self.current_index = 0
-        self.current_box: Optional[BoundingBox] = None
+        
+        # Multi-box support
+        self.boxes: List[BoundingBox] = []  # List of all boxes in current image
+        self.selected_box_index: Optional[int] = None  # Which box is selected
         self.selected_class_id = self.class_ids[0] if self.class_ids else 0
         
         # Canvas state
-        self.canvas_rect = None
+        self.canvas_rects: List[int] = []  # Canvas rectangle IDs for all boxes
         self.drag_data = {"item": None, "x": 0, "y": 0}
         self.resize_handle = None
         self.creating_box = False  # Track if we're creating a new box
@@ -207,7 +210,8 @@ class AnnotationTool:
         # Navigation buttons
         ttk.Button(control_frame, text="⬅️ Previous (←)", command=self.prev_image).pack(side=tk.LEFT, padx=5)
         ttk.Button(control_frame, text="Next ➡️ (→)", command=self.next_image).pack(side=tk.LEFT, padx=5)
-        ttk.Button(control_frame, text="🗑️ Delete Box (Del)", command=self.delete_box).pack(side=tk.LEFT, padx=5)
+        ttk.Button(control_frame, text="➕ Add Box", command=self.add_new_box).pack(side=tk.LEFT, padx=5)
+        ttk.Button(control_frame, text="🗑️ Delete Selected (Del)", command=self.delete_selected_box).pack(side=tk.LEFT, padx=5)
         ttk.Button(control_frame, text="💾 Save (S)", command=self.save_annotation).pack(side=tk.LEFT, padx=5)
         
         # Separator
@@ -218,12 +222,37 @@ class AnnotationTool:
                   style='Accent.TButton').pack(side=tk.LEFT, padx=5)
         ttk.Button(control_frame, text="🧹 Clear Folder", command=self.clear_folder).pack(side=tk.LEFT, padx=5)
         
-        # Canvas for image display
-        canvas_frame = ttk.Frame(self.root)
-        canvas_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Main content area with canvas and box list
+        content_frame = ttk.Frame(self.root)
+        content_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        
+        # Canvas for image display (left side)
+        canvas_frame = ttk.Frame(content_frame)
+        canvas_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         self.canvas = tk.Canvas(canvas_frame, bg='gray25', highlightthickness=0)
         self.canvas.pack(fill=tk.BOTH, expand=True)
+        
+        # Box list panel (right side)
+        box_list_frame = ttk.LabelFrame(content_frame, text="Boxes in Image", padding=10)
+        box_list_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(10, 0))
+        
+        # Box listbox with scrollbar
+        list_scroll = ttk.Scrollbar(box_list_frame)
+        list_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.box_listbox = tk.Listbox(
+            box_list_frame, 
+            height=15, 
+            width=25,
+            font=('Arial', 10),
+            yscrollcommand=list_scroll.set
+        )
+        self.box_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        list_scroll.config(command=self.box_listbox.yview)
+        
+        # Bind selection event
+        self.box_listbox.bind('<<ListboxSelect>>', self._on_box_list_selected)
         
         # Canvas bindings
         self.canvas.bind('<Button-1>', self._on_canvas_click)
@@ -239,12 +268,12 @@ class AnnotationTool:
         """Bind keyboard shortcuts"""
         self.root.bind('<Left>', lambda e: self.prev_image())
         self.root.bind('<Right>', lambda e: self.next_image())
-        self.root.bind('<Delete>', lambda e: self.delete_box())
-        self.root.bind('<BackSpace>', lambda e: self.delete_box())
+        self.root.bind('<Delete>', lambda e: self.delete_selected_box())
+        self.root.bind('<BackSpace>', lambda e: self.delete_selected_box())
         self.root.bind('s', lambda e: self.save_annotation())
         self.root.bind('S', lambda e: self.save_annotation())
-        self.root.bind('n', lambda e: self._create_box_at_center())
-        self.root.bind('N', lambda e: self._create_box_at_center())
+        self.root.bind('n', lambda e: self.add_new_box())
+        self.root.bind('N', lambda e: self.add_new_box())
     
     def _update_status(self, message: str):
         """Update status bar"""
@@ -262,9 +291,43 @@ class AnnotationTool:
         """Handle class dropdown change"""
         selected_name = self.class_var.get()
         self.selected_class_id = self.class_name_to_id[selected_name]
-        if self.current_box:
-            self.current_box.class_id = self.selected_class_id
+        
+        # Update selected box's class if one is selected
+        if self.selected_box_index is not None and self.boxes:
+            self.boxes[self.selected_box_index].class_id = self.selected_class_id
+            self._update_box_list()
             self._update_status(f"Changed class to: {selected_name} (ID {self.selected_class_id})")
+    
+    def _update_box_list(self):
+        """Update the listbox showing all boxes in current image"""
+        self.box_listbox.delete(0, tk.END)
+        
+        for i, box in enumerate(self.boxes):
+            class_name = self.class_id_to_name.get(box.class_id, f"class_{box.class_id}")
+            marker = "→" if i == self.selected_box_index else "  "
+            self.box_listbox.insert(tk.END, f"{marker} {class_name}")
+        
+        # Highlight selected item
+        if self.selected_box_index is not None and self.boxes:
+            self.box_listbox.selection_clear(0, tk.END)
+            self.box_listbox.selection_set(self.selected_box_index)
+            self.box_listbox.see(self.selected_box_index)
+    
+    def _on_box_list_selected(self, event):
+        """Handle box selection from listbox"""
+        selection = self.box_listbox.curselection()
+        if selection:
+            self.selected_box_index = selection[0]
+            
+            # Update class dropdown to match selected box
+            if self.boxes and self.selected_box_index < len(self.boxes):
+                box = self.boxes[self.selected_box_index]
+                if box.class_id in self.class_id_to_name:
+                    self.class_var.set(self.class_id_to_name[box.class_id])
+                    self.selected_class_id = box.class_id
+            
+            self._draw_all_boxes()
+            self._update_box_list()
     
     def load_image(self, index: int):
         """Load image and its annotation"""
@@ -322,21 +385,25 @@ class AnnotationTool:
         self._update_status(f"Loaded: {image_path.name}")
     
     def _load_annotation(self, image_path: Path):
-        """Load existing annotation for image"""
+        """Load existing annotations for image (supports multiple boxes)"""
         annotation_path = image_path.with_suffix('.txt')
         
+        # Clear existing boxes
+        self.boxes = []
+        self.selected_box_index = None
+        
         if not annotation_path.exists():
-            self.current_box = None
-            self.canvas_rect = None
+            self._draw_all_boxes()
+            self._update_box_list()
             return
         
-        # Read first annotation (we only support one box for now)
+        # Read all annotations (multiple boxes)
         try:
             with open(annotation_path, 'r') as f:
                 lines = f.readlines()
             
-            if lines:
-                parts = lines[0].strip().split()
+            for line in lines:
+                parts = line.strip().split()
                 if len(parts) == 5:
                     class_id = int(parts[0])
                     x_center = float(parts[1])
@@ -344,62 +411,77 @@ class AnnotationTool:
                     width = float(parts[3])
                     height = float(parts[4])
                     
-                    self.current_box = BoundingBox(class_id, x_center, y_center, width, height)
-                    
-                    # Update class dropdown
-                    if class_id in self.class_id_to_name:
-                        self.class_var.set(self.class_id_to_name[class_id])
-                        self.selected_class_id = class_id
-                    else:
-                        # Class ID not in our list - map to first defined class
-                        logger.warning(f"Loaded annotation with class {class_id}, not in defined classes. Mapping to {self.class_names[0]} (ID {self.class_ids[0]})")
-                        self.class_var.set(self.class_names[0])
-                        self.selected_class_id = self.class_ids[0]
-                        # Update the box to use the new class ID
-                        self.current_box.class_id = self.selected_class_id
-                    
-                    # Draw box on canvas
-                    self._draw_box()
+                    box = BoundingBox(class_id, x_center, y_center, width, height)
+                    self.boxes.append(box)
+            
+            # Select first box by default if any boxes exist
+            if self.boxes:
+                self.selected_box_index = 0
+                # Update class dropdown to match first box
+                if self.boxes[0].class_id in self.class_id_to_name:
+                    self.class_var.set(self.class_id_to_name[self.boxes[0].class_id])
+                    self.selected_class_id = self.boxes[0].class_id
+            
+            # Draw all boxes on canvas
+            self._draw_all_boxes()
+            self._update_box_list()
+            
         except Exception as e:
             logger.warning(f"Failed to load annotation: {e}")
-            self.current_box = None
+            self.boxes = []
+            self.selected_box_index = None
+            self._draw_all_boxes()
+            self._update_box_list()
     
-    def _draw_box(self):
-        """Draw bounding box on canvas"""
-        if not self.current_box:
+    def _draw_all_boxes(self):
+        """Draw all bounding boxes on canvas, highlight selected"""
+        # Clear old rectangles
+        for rect_id in self.canvas_rects:
+            self.canvas.delete(rect_id)
+        self.canvas_rects = []
+        
+        if not self.boxes:
             return
         
-        # Convert to pixel coordinates
-        x1, y1, x2, y2 = self.current_box.to_pixel_coords(self.img_width, self.img_height)
-        
-        # Scale to display size
-        scale = self.display_image.width / self.img_width
-        x1 = int(x1 * scale) + (self.canvas.winfo_width() - self.display_image.width) // 2
-        y1 = int(y1 * scale) + (self.canvas.winfo_height() - self.display_image.height) // 2
-        x2 = int(x2 * scale) + (self.canvas.winfo_width() - self.display_image.width) // 2
-        y2 = int(y2 * scale) + (self.canvas.winfo_height() - self.display_image.height) // 2
-        
-        # Delete old rectangle
-        if self.canvas_rect:
-            self.canvas.delete(self.canvas_rect)
-        
-        # Draw new rectangle
-        self.canvas_rect = self.canvas.create_rectangle(
-            x1, y1, x2, y2,
-            outline='lime',
-            width=3,
-            tags='bbox'
-        )
+        # Draw each box
+        for i, box in enumerate(self.boxes):
+            # Convert to pixel coordinates
+            x1, y1, x2, y2 = box.to_pixel_coords(self.img_width, self.img_height)
+            
+            # Scale to display size
+            scale = self.display_image.width / self.img_width
+            x1 = int(x1 * scale) + (self.canvas.winfo_width() - self.display_image.width) // 2
+            y1 = int(y1 * scale) + (self.canvas.winfo_height() - self.display_image.height) // 2
+            x2 = int(x2 * scale) + (self.canvas.winfo_width() - self.display_image.width) // 2
+            y2 = int(y2 * scale) + (self.canvas.winfo_height() - self.display_image.height) // 2
+            
+            # Highlight selected box differently
+            is_selected = (i == self.selected_box_index)
+            outline_color = 'yellow' if is_selected else 'lime'
+            line_width = 4 if is_selected else 2
+            
+            # Draw rectangle
+            rect_id = self.canvas.create_rectangle(
+                x1, y1, x2, y2,
+                outline=outline_color,
+                width=line_width,
+                tags=f'bbox_{i}'
+            )
+            self.canvas_rects.append(rect_id)
     
     def _on_canvas_click(self, event):
-        """Handle canvas click"""
-        # Check if clicking on existing box
-        if self.canvas_rect:
-            bbox = self.canvas.bbox(self.canvas_rect)
+        """Handle canvas click - select box or create new one"""
+        # Check if clicking on any existing box (check in reverse order for top-most)
+        clicked_box_index = None
+        
+        for i in range(len(self.canvas_rects) - 1, -1, -1):
+            rect_id = self.canvas_rects[i]
+            bbox = self.canvas.bbox(rect_id)
             if bbox:
                 x1, y1, x2, y2 = bbox
-                # Check if click is on box edges (resize) or inside (move)
                 margin = 15  # Larger margin for easier grabbing
+                
+                # Check if click is on box edges (resize) or inside (move)
                 on_left = abs(event.x - x1) < margin and y1 - margin <= event.y <= y2 + margin
                 on_right = abs(event.x - x2) < margin and y1 - margin <= event.y <= y2 + margin
                 on_top = abs(event.y - y1) < margin and x1 - margin <= event.x <= x2 + margin
@@ -407,9 +489,16 @@ class AnnotationTool:
                 
                 if on_left or on_right or on_top or on_bottom:
                     # Resize mode
+                    clicked_box_index = i
+                    self.selected_box_index = i
                     self.resize_handle = {'left': on_left, 'right': on_right, 'top': on_top, 'bottom': on_bottom}
-                    self.drag_data = {"item": self.canvas_rect, "x": event.x, "y": event.y, "resize": True}
-                    # Change cursor to indicate resize
+                    self.drag_data = {"item": rect_id, "x": event.x, "y": event.y, "resize": True, "box_index": i}
+                    
+                    # Update UI
+                    self._draw_all_boxes()
+                    self._update_box_list()
+                    
+                    # Change cursor
                     if on_left and on_top:
                         self.canvas.config(cursor="top_left_corner")
                     elif on_right and on_top:
@@ -422,135 +511,81 @@ class AnnotationTool:
                         self.canvas.config(cursor="sb_h_double_arrow")
                     elif on_top or on_bottom:
                         self.canvas.config(cursor="sb_v_double_arrow")
+                    return
+                    
                 elif x1 <= event.x <= x2 and y1 <= event.y <= y2:
-                    # Inside box - move
-                    self.drag_data = {"item": self.canvas_rect, "x": event.x, "y": event.y, "resize": False}
+                    # Inside box - select and prepare to move
+                    clicked_box_index = i
+                    self.selected_box_index = i
+                    self.drag_data = {"item": rect_id, "x": event.x, "y": event.y, "resize": False, "box_index": i}
+                    
+                    # Update UI
+                    self._draw_all_boxes()
+                    self._update_box_list()
+                    
                     self.canvas.config(cursor="fleur")
-                else:
-                    # Outside box - start creating new box
-                    self._start_box_creation(event.x, event.y)
-        else:
-            # No box exists - start creating new box
-            self._start_box_creation(event.x, event.y)
+                    return
+        
+        # No box clicked - start creating new box
+        self._start_box_creation(event.x, event.y)
     
     def _start_box_creation(self, x: int, y: int):
         """Start creating a new box at click position"""
-        # Delete existing box if any
-        if self.canvas_rect:
-            self.canvas.delete(self.canvas_rect)
-            self.canvas_rect = None
-        
         # Mark that we're creating a new box
         self.creating_box = True
         
         # Store start position
         self.drag_data = {"x": x, "y": y, "creating": True}
         
-        # Create initial rectangle (single point)
-        self.canvas_rect = self.canvas.create_rectangle(
+        # Create initial rectangle (single point) - will be added to canvas_rects temporarily
+        temp_rect = self.canvas.create_rectangle(
             x, y, x, y,
-            outline='lime',
+            outline='cyan',  # Different color for box being created
             width=3,
-            tags='bbox'
+            tags='bbox_creating'
         )
+        self.drag_data["temp_rect"] = temp_rect
         self.canvas.config(cursor="crosshair")
-    
-    def _create_box_at_click(self, x: int, y: int):
-        """Create new bounding box at click position (old behavior - creates fixed size box)"""
-        # Default box size (100x100 pixels)
-        box_size = 100
-        x1 = x - box_size // 2
-        y1 = y - box_size // 2
-        x2 = x + box_size // 2
-        y2 = y + box_size // 2
-        
-        # Convert to image coordinates
-        self._create_box_from_canvas_coords(x1, y1, x2, y2)
-    
-    def _create_box_at_center(self):
-        """Create box at image center"""
-        center_x = self.canvas.winfo_width() // 2
-        center_y = self.canvas.winfo_height() // 2
-        self._create_box_at_click(center_x, center_y)
-    
-    def _create_box_from_canvas_coords(self, x1: int, y1: int, x2: int, y2: int):
-        """Create bounding box from canvas coordinates"""
-        # Convert canvas coords to image coords
-        scale = self.display_image.width / self.img_width
-        offset_x = (self.canvas.winfo_width() - self.display_image.width) // 2
-        offset_y = (self.canvas.winfo_height() - self.display_image.height) // 2
-        
-        img_x1 = int((x1 - offset_x) / scale)
-        img_y1 = int((y1 - offset_y) / scale)
-        img_x2 = int((x2 - offset_x) / scale)
-        img_y2 = int((y2 - offset_y) / scale)
-        
-        # Clamp to image bounds
-        img_x1 = max(0, min(img_x1, self.img_width))
-        img_y1 = max(0, min(img_y1, self.img_height))
-        img_x2 = max(0, min(img_x2, self.img_width))
-        img_y2 = max(0, min(img_y2, self.img_height))
-        
-        # Create bounding box
-        self.current_box = BoundingBox.from_pixel_coords(
-            self.selected_class_id,
-            img_x1, img_y1, img_x2, img_y2,
-            self.img_width, self.img_height
-        )
-        
-        self._draw_box()
-        self._update_status("Created new bounding box")
     
     def _on_canvas_drag(self, event):
         """Handle canvas drag"""
         # Check if we're creating a new box
         if self.drag_data.get("creating"):
             # Update rectangle to current mouse position
-            start_x = self.drag_data["x"]
-            start_y = self.drag_data["y"]
-            
-            # Draw from top-left (start) to bottom-right (current)
-            self.canvas.coords(self.canvas_rect, start_x, start_y, event.x, event.y)
+            temp_rect = self.drag_data.get("temp_rect")
+            if temp_rect:
+                start_x = self.drag_data["x"]
+                start_y = self.drag_data["y"]
+                # Draw from top-left (start) to bottom-right (current)
+                self.canvas.coords(temp_rect, start_x, start_y, event.x, event.y)
             return
         
-        if not self.drag_data["item"]:
+        if not self.drag_data.get("item"):
             return
+        
+        box_index = self.drag_data.get("box_index")
+        if box_index is None:
+            return
+            
+        rect_id = self.drag_data["item"]
         
         if self.drag_data.get("resize"):
-            # Resize box - get current bbox
-            bbox = self.canvas.bbox(self.canvas_rect)
+            # Resize box
+            bbox = self.canvas.bbox(rect_id)
             if bbox:
                 x1, y1, x2, y2 = bbox
                 
-                # Store original opposite edges (only on first drag movement)
+                # Store original opposite edges
                 if "orig_bbox" not in self.drag_data:
                     self.drag_data["orig_bbox"] = (x1, y1, x2, y2)
                 
                 orig_x1, orig_y1, orig_x2, orig_y2 = self.drag_data["orig_bbox"]
                 
-                # Start with original coordinates
-                new_x1, new_y1, new_x2, new_y2 = orig_x1, orig_y1, orig_x2, orig_y2
-                
-                # Modify only the edges/corners being dragged
-                if self.resize_handle.get('left'):
-                    new_x1 = event.x
-                else:
-                    new_x1 = orig_x1
-                    
-                if self.resize_handle.get('right'):
-                    new_x2 = event.x
-                else:
-                    new_x2 = orig_x2
-                    
-                if self.resize_handle.get('top'):
-                    new_y1 = event.y
-                else:
-                    new_y1 = orig_y1
-                    
-                if self.resize_handle.get('bottom'):
-                    new_y2 = event.y
-                else:
-                    new_y2 = orig_y2
+                # Modify edges being dragged
+                new_x1 = event.x if self.resize_handle.get('left') else orig_x1
+                new_x2 = event.x if self.resize_handle.get('right') else orig_x2
+                new_y1 = event.y if self.resize_handle.get('top') else orig_y1
+                new_y2 = event.y if self.resize_handle.get('bottom') else orig_y2
                 
                 # Ensure x1 < x2 and y1 < y2
                 if new_x1 > new_x2:
@@ -560,59 +595,64 @@ class AnnotationTool:
                 
                 # Ensure minimum size
                 if new_x2 - new_x1 >= 20 and new_y2 - new_y1 >= 20:
-                    self.canvas.coords(self.canvas_rect, new_x1, new_y1, new_x2, new_y2)
+                    self.canvas.coords(rect_id, new_x1, new_y1, new_x2, new_y2)
         else:
-            # Move box - use delta
+            # Move box
             dx = event.x - self.drag_data["x"]
             dy = event.y - self.drag_data["y"]
-            self.canvas.move(self.canvas_rect, dx, dy)
+            self.canvas.move(rect_id, dx, dy)
             self.drag_data["x"] = event.x
             self.drag_data["y"] = event.y
     
     def _on_canvas_release(self, event):
-        """Handle mouse release - update bounding box"""
+        """Handle mouse release - finalize box creation/editing"""
         # If we were creating a new box, finalize it
         if self.drag_data.get("creating"):
             self.creating_box = False
-            bbox = self.canvas.bbox(self.canvas_rect)
-            if bbox:
-                x1, y1, x2, y2 = bbox
+            temp_rect = self.drag_data.get("temp_rect")
+            
+            if temp_rect:
+                bbox = self.canvas.bbox(temp_rect)
+                if bbox:
+                    x1, y1, x2, y2 = bbox
+                    
+                    # Ensure x1 < x2 and y1 < y2
+                    if x1 > x2:
+                        x1, x2 = x2, x1
+                    if y1 > y2:
+                        y1, y2 = y2, y1
+                    
+                    # Check minimum size
+                    if x2 - x1 >= 10 and y2 - y1 >= 10:
+                        # Convert to image coordinates and create box
+                        self._create_box_from_canvas_coords(x1, y1, x2, y2)
+                        self._update_status("Created new bounding box")
+                    else:
+                        self._update_status("Box too small - cancelled")
                 
-                # Ensure x1 < x2 and y1 < y2
-                if x1 > x2:
-                    x1, x2 = x2, x1
-                if y1 > y2:
-                    y1, y2 = y2, y1
-                
-                # Check minimum size (at least 10x10 pixels)
-                if x2 - x1 >= 10 and y2 - y1 >= 10:
-                    # Create the bounding box from the drawn rectangle
-                    self._update_box_from_canvas_coords(x1, y1, x2, y2)
-                    self._update_status("Created new bounding box")
-                else:
-                    # Too small - delete it
-                    self.canvas.delete(self.canvas_rect)
-                    self.canvas_rect = None
-                    self.current_box = None
-                    self._update_status("Box too small - cancelled")
+                # Delete temporary rectangle
+                self.canvas.delete(temp_rect)
             
             self.canvas.config(cursor="")
             self.drag_data = {"item": None, "x": 0, "y": 0}
             return
         
-        # Only update the underlying box coordinates if we were dragging
-        if self.canvas_rect and self.drag_data.get("item"):
-            bbox = self.canvas.bbox(self.canvas_rect)
-            if bbox:
-                # Update the underlying BoundingBox without redrawing
-                self._update_box_from_canvas_coords(*bbox)
+        # If we were resizing or moving a box, update the box data
+        if self.drag_data.get("item"):
+            box_index = self.drag_data.get("box_index")
+            if box_index is not None and box_index < len(self.boxes):
+                rect_id = self.drag_data["item"]
+                bbox = self.canvas.bbox(rect_id)
+                if bbox:
+                    x1, y1, x2, y2 = bbox
+                    self._update_box_from_canvas_coords(x1, y1, x2, y2, box_index)
         
         self.drag_data = {"item": None, "x": 0, "y": 0}
         self.resize_handle = None
-        self.canvas.config(cursor="")  # Reset cursor
+        self.canvas.config(cursor="")
     
-    def _update_box_from_canvas_coords(self, x1: int, y1: int, x2: int, y2: int):
-        """Update current bounding box from canvas coordinates WITHOUT redrawing"""
+    def _create_box_from_canvas_coords(self, x1: int, y1: int, x2: int, y2: int):
+        """Create NEW box from canvas coordinates and add to boxes list"""
         # Convert canvas coords to image coords
         scale = self.display_image.width / self.img_width
         offset_x = (self.canvas.winfo_width() - self.display_image.width) // 2
@@ -629,13 +669,52 @@ class AnnotationTool:
         img_x2 = max(0, min(img_x2, self.img_width))
         img_y2 = max(0, min(img_y2, self.img_height))
         
-        # Update bounding box (don't create new, just update existing)
-        self.current_box = BoundingBox.from_pixel_coords(
+        # Create new bounding box
+        new_box = BoundingBox.from_pixel_coords(
             self.selected_class_id,
             img_x1, img_y1, img_x2, img_y2,
             self.img_width, self.img_height
         )
-        # Don't call _draw_box() here - the canvas rect is already in the right position!
+        
+        # Add to boxes list
+        self.boxes.append(new_box)
+        self.selected_box_index = len(self.boxes) - 1
+        
+        # Redraw all boxes and update UI
+        self._draw_all_boxes()
+        self._update_box_list()
+    
+    def _update_box_from_canvas_coords(self, x1: int, y1: int, x2: int, y2: int, box_index: int = None):
+        """Update existing box from canvas coordinates"""
+        if box_index is None:
+            box_index = self.selected_box_index
+        
+        if box_index is None or box_index >= len(self.boxes):
+            return
+        
+        # Convert canvas coords to image coords
+        scale = self.display_image.width / self.img_width
+        offset_x = (self.canvas.winfo_width() - self.display_image.width) // 2
+        offset_y = (self.canvas.winfo_height() - self.display_image.height) // 2
+        
+        img_x1 = int((x1 - offset_x) / scale)
+        img_y1 = int((y1 - offset_y) / scale)
+        img_x2 = int((x2 - offset_x) / scale)
+        img_y2 = int((y2 - offset_y) / scale)
+        
+        # Clamp to image bounds
+        img_x1 = max(0, min(img_x1, self.img_width))
+        img_y1 = max(0, min(img_y1, self.img_height))
+        img_x2 = max(0, min(img_x2, self.img_width))
+        img_y2 = max(0, min(img_y2, self.img_height))
+        
+        # Update existing box
+        updated_box = BoundingBox.from_pixel_coords(
+            self.boxes[box_index].class_id,  # Keep existing class
+            img_x1, img_y1, img_x2, img_y2,
+            self.img_width, self.img_height
+        )
+        self.boxes[box_index] = updated_box
     
     def _on_canvas_resize(self, event):
         """Handle canvas resize - redraw image"""
@@ -644,7 +723,7 @@ class AnnotationTool:
             self.load_image(self.current_index)
     
     def save_annotation(self):
-        """Save current annotation to file"""
+        """Save all annotations to file"""
         if not self.images:
             return
         
@@ -652,24 +731,26 @@ class AnnotationTool:
         annotation_path = image_path.with_suffix('.txt')
         
         try:
-            if self.current_box:
+            if self.boxes:
+                # Save all boxes (one per line)
                 with open(annotation_path, 'w') as f:
-                    f.write(self.current_box.to_yolo_string())
-                self._update_status(f"✅ Saved annotation: {annotation_path.name}")
+                    for box in self.boxes:
+                        f.write(box.to_yolo_string() + '\n')
+                self._update_status(f"✅ Saved {len(self.boxes)} annotation(s): {annotation_path.name}")
                 
                 # Create visualization
                 self._save_visualization(image_path, annotation_path)
             else:
-                # No box - create empty file or delete existing
+                # No boxes - delete annotation file if exists
                 if annotation_path.exists():
                     annotation_path.unlink()
-                self._update_status(f"⚠️  No box to save (deleted annotation if existed)")
+                self._update_status(f"⚠️  No boxes to save (deleted annotation if existed)")
         except Exception as e:
             logger.error(f"Failed to save annotation: {e}")
             messagebox.showerror("Save Error", f"Failed to save annotation: {e}")
     
     def _save_visualization(self, image_path: Path, annotation_path: Path):
-        """Save a visualization of the annotation"""
+        """Save a visualization of the annotations (all boxes)"""
         try:
             # Create annotation_check directory next to to_annotate
             viz_dir = self.input_dir.parent / 'annotation_check'
@@ -681,12 +762,20 @@ class AnnotationTool:
             
             img_width, img_height = image.size
             
-            # Parse annotation
+            # Parse all annotations
             with open(annotation_path, 'r') as f:
-                line = f.readline().strip()
+                lines = f.readlines()
             
-            if line:
+            # Draw each box
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
                 parts = line.split()
+                if len(parts) < 5:
+                    continue
+                    
                 class_id = int(parts[0])
                 x_center = float(parts[1])
                 y_center = float(parts[2])
@@ -739,13 +828,57 @@ class AnnotationTool:
         except Exception as e:
             logger.warning(f"Failed to save visualization: {e}")
     
-    def delete_box(self):
-        """Delete current bounding box"""
-        if self.canvas_rect:
-            self.canvas.delete(self.canvas_rect)
-        self.canvas_rect = None
-        self.current_box = None
-        self._update_status("Deleted bounding box")
+    def add_new_box(self):
+        """Add new bounding box at center of image for current class"""
+        if not self.original_image:
+            return
+        
+        # Create box at center with default size
+        center_x = self.img_width / 2
+        center_y = self.img_height / 2
+        box_width = min(200, self.img_width / 3)
+        box_height = min(200, self.img_height / 3)
+        
+        # Create new box
+        new_box = BoundingBox(
+            class_id=self.selected_class_id,
+            x_center=center_x / self.img_width,
+            y_center=center_y / self.img_height,
+            width=box_width / self.img_width,
+            height=box_height / self.img_height
+        )
+        
+        self.boxes.append(new_box)
+        self.selected_box_index = len(self.boxes) - 1
+        
+        # Update UI
+        self._draw_all_boxes()
+        self._update_box_list()
+        
+        class_name = self.class_id_to_name.get(self.selected_class_id, f"class_{self.selected_class_id}")
+        self._update_status(f"✅ Added new {class_name} box")
+    
+    def delete_selected_box(self):
+        """Delete currently selected bounding box"""
+        if self.selected_box_index is not None and self.boxes:
+            if self.selected_box_index < len(self.boxes):
+                deleted_box = self.boxes[self.selected_box_index]
+                class_name = self.class_id_to_name.get(deleted_box.class_id, f"class_{deleted_box.class_id}")
+                
+                del self.boxes[self.selected_box_index]
+                
+                # Update selection
+                if self.boxes:
+                    self.selected_box_index = min(self.selected_box_index, len(self.boxes) - 1)
+                else:
+                    self.selected_box_index = None
+                
+                # Update UI
+                self._draw_all_boxes()
+                self._update_box_list()
+                self._update_status(f"🗑️ Deleted {class_name} box")
+        else:
+            self._update_status("⚠️  No box selected to delete")
     
     def prev_image(self):
         """Load previous image"""
@@ -874,8 +1007,9 @@ class AnnotationTool:
             # Reload image list (should be empty now)
             self.images = self._find_images()
             self.current_index = 0
-            self.current_box = None
-            self.canvas_rect = None
+            self.boxes = []
+            self.selected_box_index = None
+            self.canvas_rects = []
             self.canvas.delete('all')
             self._update_status("Folder cleared")
         
@@ -934,16 +1068,16 @@ Examples:
         '--classes',
         type=str,
         nargs='+',
-        default=['coffee_mug'],
-        help='Class names (default: coffee_mug)'
+        default=['coffee_mug', 'cellphone'],
+        help='Class names (default: coffee_mug cellphone)'
     )
     
     parser.add_argument(
         '--class-ids',
         type=int,
         nargs='+',
-        default=None,
-        help='Class IDs corresponding to class names (default: 0, 1, 2...). Example: --class-ids 0 for single-class coffee_mug model'
+        default=[0, 1],
+        help='Class IDs corresponding to class names (default: 0 1). Example: --class-ids 0 1 for coffee_mug and cellphone'
     )
     
     parser.add_argument(
