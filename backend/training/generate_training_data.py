@@ -22,12 +22,27 @@ Educational Notes:
 
 import argparse
 import os
+import sys
 import time
 from pathlib import Path
 from datetime import datetime
 import logging
 import json
 from dotenv import load_dotenv
+
+# Add parent directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+# Import visualizer for annotation verification
+try:
+    from visualize_annotations import AnnotationVisualizer
+    VISUALIZER_AVAILABLE = True
+except ImportError:
+    try:
+        from backend.training.visualize_annotations import AnnotationVisualizer
+        VISUALIZER_AVAILABLE = True
+    except ImportError:
+        VISUALIZER_AVAILABLE = False
 
 # OpenAI imports
 try:
@@ -242,7 +257,7 @@ class SyntheticDataGenerator:
         Use pre-trained YOLOv8n to automatically detect object position
         
         This solves the "assumed centered" problem by using AI to find where
-        the deer actually is in the generated image!
+        the object actually is in the generated image!
         
         Args:
             image_path: Path to generated image
@@ -261,10 +276,8 @@ class SyntheticDataGenerator:
             # Run detection
             results = self._detector_model(image_path, verbose=False)
             
-            # COCO classes that could be animals (we want the largest one)
-            # 15=bird, 16=cat, 17=dog, 18=horse, 19=sheep, 20=cow
-            # 21=elephant, 22=bear, 23=zebra, 24=giraffe
-            animal_classes = [15, 16, 17, 18, 19, 20, 21, 22, 23, 24]
+            # Detect ALL objects (not just animals)
+            # We want the largest detected object in the frame
             
             best_box = None
             best_area = 0
@@ -274,8 +287,8 @@ class SyntheticDataGenerator:
                     cls = int(box.cls[0])
                     conf = float(box.conf[0])
                     
-                    # Look for any animal-like detection
-                    if cls in animal_classes and conf > 0.3:
+                    # Look for ANY detection with reasonable confidence
+                    if conf > 0.3:
                         # Get normalized coordinates
                         x1, y1, x2, y2 = box.xyxyn[0].tolist()
                         
@@ -290,13 +303,13 @@ class SyntheticDataGenerator:
                             x_center = (x1 + x2) / 2
                             y_center = (y1 + y2) / 2
                             best_box = (x_center, y_center, width, height)
-                            logger.info(f"   🎯 Detected animal (class {cls}, conf {conf:.2f}, area {area:.2%})")
+                            logger.info(f"   🎯 Detected object (class {cls}, conf {conf:.2f}, area {area:.2%})")
             
             if best_box:
                 logger.info(f"   ✅ Auto-annotation: center=({best_box[0]:.2f}, {best_box[1]:.2f}), size=({best_box[2]:.2f}x{best_box[3]:.2f})")
                 return best_box
             else:
-                logger.warning("   ⚠️  No animal detected, using centered guess")
+                logger.warning("   ⚠️  No object detected, using centered guess")
                 return None
                 
         except Exception as e:
@@ -361,14 +374,16 @@ class SyntheticDataGenerator:
         else:
             # Mode 1: Generate from scratch
             if not background_description:
-                background_description = "backyard with grass and trees"
+                background_description = "plain neutral background"
             
-            # Create detailed prompt for DALL-E
+            # Create detailed prompt for DALL-E with emphasis on NO other objects
             prompt = (
-                f"A high-quality photograph of a {object_name} in {background_description}. "
+                f"A high-quality photograph of a single {object_name} on {background_description}. "
                 f"The {object_name} is clearly visible, centered in the frame, "
-                f"taking up about 60% of the image. Realistic photography style, "
-                f"natural lighting, sharp focus on the {object_name}."
+                f"taking up about 60% of the image. "
+                f"IMPORTANT: The background must be completely plain and empty with NO other objects visible. "
+                f"Only the {object_name} should be in the image. "
+                f"Realistic photography style, natural lighting, sharp focus on the {object_name}."
             )
             
             image = self.generate_image(prompt, size="1024x1024", quality="standard")
@@ -417,7 +432,7 @@ class SyntheticDataGenerator:
     
     def generate_batch(self, object_name, background_description=None, count=10, 
                       class_id=0, delay=2.0, output_dir="data/synthetic_training",
-                      base_image_path=None):
+                      base_image_path=None, visualize=True):
         """
         Generate multiple training samples
         
@@ -429,6 +444,7 @@ class SyntheticDataGenerator:
             delay: Seconds to wait between API calls (rate limiting)
             output_dir: Where to save files
             base_image_path: Optional path to base image to edit
+            visualize: If True, create annotated visualization images
         
         Returns:
             List of (image_path, label_path) tuples
@@ -446,22 +462,34 @@ class SyntheticDataGenerator:
             logger.info(f"�🏞️  Background: {background_description or 'default'}")
         
         logger.info(f"💾 Output: {output_dir}")
+        logger.info(f"🎨 Visualize: {visualize}")
         logger.info("")
+        
+        # Initialize visualizer if requested
+        visualizer = None
+        viz_output_dir = None
+        if visualize and VISUALIZER_AVAILABLE:
+            visualizer = AnnotationVisualizer(class_names={class_id: object_name})
+            viz_output_dir = Path(output_dir).parent / "annotation_check"
+            viz_output_dir.mkdir(parents=True, exist_ok=True)
+            logger.info(f"📊 Visualization output: {viz_output_dir}")
+            logger.info("")
         
         results = []
         
         for i in range(count):
             logger.info(f"[{i+1}/{count}] Generating sample...")
             
-            # For generation mode, add variation to background for diversity
+            # For generation mode, add variation to lighting only (NOT objects or scene elements)
             bg = None
             if not base_image_path and background_description:
+                # Only vary lighting, keep background plain and empty
                 variations = [
                     background_description,
-                    f"{background_description}, morning light",
-                    f"{background_description}, afternoon sun",
-                    f"{background_description}, overcast sky",
-                    f"{background_description}, golden hour lighting",
+                    f"{background_description} with soft lighting",
+                    f"{background_description} with bright lighting",
+                    f"{background_description} with neutral lighting",
+                    f"{background_description} with studio lighting",
                 ]
                 bg = variations[i % len(variations)]
             
@@ -476,6 +504,12 @@ class SyntheticDataGenerator:
             
             if image_path and label_path:
                 results.append((image_path, label_path))
+                
+                # Visualize annotation if requested
+                if visualizer and viz_output_dir:
+                    viz_path = viz_output_dir / f"annotated_{image_path.name}"
+                    visualizer.visualize_image(image_path, label_path, viz_path)
+                
                 logger.info(f"✅ Sample {i+1} complete\n")
             else:
                 logger.error(f"❌ Sample {i+1} failed\n")
@@ -545,6 +579,10 @@ Costs (as of Oct 2025):
                        help='Output directory (default: data/synthetic_training)')
     parser.add_argument('--delay', type=float, default=2.0,
                        help='Delay between API calls in seconds (default: 2.0)')
+    parser.add_argument('--visualize', action='store_true', default=True,
+                       help='Create annotated visualization images (default: True)')
+    parser.add_argument('--no-visualize', action='store_false', dest='visualize',
+                       help='Skip creating visualization images')
     
     args = parser.parse_args()
     
@@ -568,7 +606,8 @@ Costs (as of Oct 2025):
             class_id=args.class_id,
             delay=args.delay,
             output_dir=args.output,
-            base_image_path=args.base_image
+            base_image_path=args.base_image,
+            visualize=args.visualize
         )
         
         if results:

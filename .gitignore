@@ -23,9 +23,15 @@ models/custom_model/weights/last.pt
 models/custom_model/weights/epoch*.pt
 models/custom_model/*.csv
 models/custom_model/*.yaml
+models/custom_model/test_results/
 models/*.onnx
 !models/yolov8n.pt
 !models/custom_model/weights/best.pt
+
+# Image files (training data is in data/ which is already ignored)
+*.png
+*.jpg
+*.jpeg
 
 # Environment variables
 .env
