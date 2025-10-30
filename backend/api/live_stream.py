@@ -63,12 +63,13 @@ class LiveCameraManager:
     Uses shared camera resources to work alongside capture system.
     """
     
-    def __init__(self, model_path: str = "models/yolov8n.pt"):
+    def __init__(self, model_path: str = "models/custom_model/weights/best.pt"):
         self.model_path = model_path
         self.detector = None
         self.clients: List[WebSocket] = []
         self.confidence_threshold = 0.25
         self.shared_camera = get_shared_camera()
+        self.loop = None  # Will be set when first client connects
         self.stats = {
             "fps": 0.0,
             "detection_count": 0,
@@ -90,12 +91,17 @@ class LiveCameraManager:
                 logger.info("✅ Live stream detector ready")
             except Exception as e:
                 logger.error(f"❌ Failed to load live stream detector: {e}")
+                logger.error(f"❌ Failed to load live stream detector: {e}")
     
     async def add_client(self, websocket: WebSocket):
         """Add a new WebSocket client"""
         await websocket.accept()
         self.clients.append(websocket)
         logger.info(f"📱 Client connected (total: {len(self.clients)})")
+        
+        # Store event loop reference if not already set
+        if self.loop is None:
+            self.loop = asyncio.get_event_loop()
         
         # Register stream callback with shared camera if this is first client
         if len(self.clients) == 1:
@@ -154,11 +160,12 @@ class LiveCameraManager:
                     "timestamp": datetime.now().isoformat()
                 }
                 
-                # Use asyncio to send to all clients
-                asyncio.run_coroutine_threadsafe(
-                    self._broadcast_message(message),
-                    asyncio.get_event_loop()
-                )
+                # Use asyncio to send to all clients (only if we have an event loop)
+                if self.loop is not None:
+                    asyncio.run_coroutine_threadsafe(
+                        self._broadcast_message(message),
+                        self.loop
+                    )
                 
         except Exception as e:
             logger.debug(f"⚠️  Frame processing error: {e}")
@@ -274,9 +281,14 @@ def get_live_manager() -> LiveCameraManager:
         _live_manager = LiveCameraManager()
     return _live_manager
 
-async def handle_websocket(websocket: WebSocket):
+async def handle_websocket(websocket: WebSocket, app_state=None):
     """Handle WebSocket connection for live camera feed"""
-    manager = get_live_manager()
+    # Use LiveCameraManager from app.state if available (set by run_camera_system.py)
+    # Otherwise fall back to singleton (for standalone API server)
+    if app_state and hasattr(app_state, 'live_manager'):
+        manager = app_state.live_manager
+    else:
+        manager = get_live_manager()
     
     try:
         await manager.add_client(websocket)

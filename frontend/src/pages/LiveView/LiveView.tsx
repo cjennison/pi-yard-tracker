@@ -54,7 +54,7 @@ interface LiveStats {
 }
 
 export default function LiveView() {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -65,6 +65,7 @@ export default function LiveView() {
   const [confidenceThreshold, setConfidenceThreshold] = useState(50);
   const [detections, setDetections] = useState<Detection[]>([]);
   const [recentDetections, setRecentDetections] = useState<Detection[]>([]);
+  const [frameCount, setFrameCount] = useState(0); // Track frame updates
   const [stats, setStats] = useState<LiveStats>({
     fps: 0,
     detection_count: 0,
@@ -80,8 +81,16 @@ export default function LiveView() {
     setError(null);
 
     try {
-      // Connect to the real WebSocket endpoint
-      const ws = new WebSocket("ws://localhost:8000/live");
+      // Auto-detect WebSocket URL (use Pi IP when accessed remotely)
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsHost =
+        window.location.hostname === "localhost"
+          ? "localhost:8000"
+          : "192.168.40.204:8000"; // Pi IP
+      const wsUrl = `${wsProtocol}//${wsHost}/live`;
+
+      console.log(`Connecting to WebSocket: ${wsUrl}`);
+      const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
         setIsConnected(true);
@@ -105,6 +114,10 @@ export default function LiveView() {
                 (det: Detection) => det.confidence >= confidenceThreshold / 100
               );
               setDetections(newDetections);
+              
+              if (newDetections.length > 0) {
+                console.log(`Received ${newDetections.length} detections:`, newDetections);
+              }
 
               // Add to recent detections (keep last 10)
               setRecentDetections((prev) => {
@@ -118,9 +131,10 @@ export default function LiveView() {
               setStats(data.stats);
             }
 
-            // Update video element with new frame
+            // Update img element with new frame
             if (videoRef.current && data.image) {
               videoRef.current.src = `data:image/jpeg;base64,${data.image}`;
+              setFrameCount(prev => prev + 1); // Trigger canvas redraw
             }
           }
         } catch (err) {
@@ -251,7 +265,7 @@ export default function LiveView() {
         ctx.fillRect(x, y, width, height);
       }
     });
-  }, [detections, showDetections, showLabels]);
+  }, [detections, showDetections, showLabels, frameCount]);
 
   // Update confidence threshold and send to backend
   const updateConfidenceThreshold = useCallback((newThreshold: number) => {
@@ -377,21 +391,21 @@ export default function LiveView() {
                   </Center>
                 ) : (
                   <>
-                    <video
+                    <img
                       ref={videoRef}
                       style={{
                         width: "100%",
-                        height: "400px",
-                        objectFit: "cover",
+                        height: "auto",
+                        objectFit: "contain",
                         display: "block",
+                        backgroundColor: "#000",
                       }}
-                      muted
-                      playsInline
+                      alt="Live camera feed"
                     />
                     <canvas
                       ref={canvasRef}
-                      width={800}
-                      height={400}
+                      width={640}
+                      height={480}
                       style={{
                         position: "absolute",
                         top: 0,

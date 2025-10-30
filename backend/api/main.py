@@ -115,7 +115,7 @@ async def websocket_live_feed(websocket: WebSocket):
     Streams real-time camera frames with YOLO detection results.
     Clients can send configuration updates like confidence threshold.
     """
-    await handle_websocket(websocket)
+    await handle_websocket(websocket, app.state)
 
 
 # ============================================================

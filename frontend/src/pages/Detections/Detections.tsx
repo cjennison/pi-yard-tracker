@@ -530,6 +530,7 @@ export default function Detections() {
           <Stack gap="md">
             {/* Photo with Detection Bounding Boxes */}
             <ImageWithDetections
+              alt="image"
               src={getImageUrl(selectedPhoto.filepath)}
               detections={selectedPhoto.detections}
               maxHeight={500}

@@ -24,12 +24,14 @@ export interface Photo {
   id: number;
   filename: string;
   filepath: string;
-  timestamp: string;
+  captured_at: string;
   width: number;
   height: number;
   session_id: number | null;
   detection_count: number;
   detections: Detection[];
+  created_at: string;
+  has_detections: boolean;
 }
 
 export interface Stats {

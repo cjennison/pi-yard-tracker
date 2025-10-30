@@ -192,11 +192,11 @@ def main():
     global shared_camera, camera_capture, live_manager, capture_thread, detector
     
     # Parse arguments
-    parser = argparse.ArgumentParser(description='Pi Yard Tracker - Camera System Only')
+    parser = argparse.ArgumentParser(description='Pi Yard Tracker - Complete Camera System')
     parser.add_argument('--no-capture', action='store_true', help='Live stream only')
     parser.add_argument('--capture-only', action='store_true', help='No live stream')
-    parser.add_argument('--interval', type=float, default=1.0, help='Capture interval (default: 1.0)')
-    parser.add_argument('--port', type=int, default=8001, help='API port (default: 8001)')
+    parser.add_argument('--interval', type=float, default=10.0, help='Capture interval in seconds (default: 10.0)')
+    parser.add_argument('--port', type=int, default=8000, help='API port (default: 8000)')
     parser.add_argument('--model', type=str, default='models/custom_model/weights/best.pt', help='YOLO model')
     parser.add_argument('--confidence', type=float, default=0.25, help='Detection confidence')
     

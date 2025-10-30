@@ -438,7 +438,7 @@ export default function Dashboard() {
                             </Badge>
                           </Group>
                           <Text size="xs" c="dimmed">
-                            {dayjs(photo.timestamp).fromNow()}
+                            {dayjs(photo.captured_at).fromNow()}
                           </Text>
                           <Group gap={4}>
                             {photo.detections.slice(0, 2).map((det) => (

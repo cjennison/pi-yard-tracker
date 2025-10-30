@@ -297,7 +297,7 @@ export default function Photos() {
                           size={12}
                           style={{ display: "inline", marginRight: 4 }}
                         />
-                        {dayjs(photo.timestamp).format("MMM D, HH:mm")}
+                        {dayjs(photo.captured_at).format("MMM D, HH:mm")}
                       </Text>
 
                       {photo.detection_count > 0 && (
@@ -385,6 +385,7 @@ export default function Photos() {
           <Stack gap="md">
             {/* Image with Bounding Boxes */}
             <ImageWithDetections
+              alt="image"
               src={getImageUrl(selectedPhoto.filepath)}
               detections={selectedPhoto.detections}
               maxHeight={600}
@@ -410,7 +411,7 @@ export default function Photos() {
                       Timestamp
                     </Text>
                     <Text size="sm" fw={500}>
-                      {dayjs(selectedPhoto.timestamp).format(
+                      {dayjs(selectedPhoto.captured_at).format(
                         "MMMM D, YYYY at h:mm:ss A"
                       )}
                     </Text>

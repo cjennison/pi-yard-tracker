@@ -10,6 +10,7 @@
 - **Custom Training**: Supports training custom YOLO models for specific animals (e.g., deer)
 - **Synthetic Data Generation**: Uses OpenAI DALL-E 3 to generate training images when real photos aren't available
 - **Automated Workflow**: Python scripts handle the complete pipeline from data generation to model testing
+- **Integrated System**: Single entry point (`run_camera_system.py`) runs camera, detection, database, API, and live streaming
 
 ### Hardware Requirements
 
@@ -18,13 +19,107 @@
 - MicroSD card (32GB+)
 - Raspberry Pi OS (64-bit)
 
+## ⚠️ CRITICAL: System Architecture
+
+### How to Run the System (THE ONLY CORRECT WAY)
+
+```bash
+# Start the complete integrated system
+python run_camera_system.py
+```
+
+**This single command starts:**
+
+1. SharedCameraManager (camera coordination with dual outputs)
+2. CameraCapture thread (saves 1920x1080 photos every 10 seconds)
+3. YOLODetector (runs detection on every photo)
+4. Database integration (saves photos + detections to SQLite)
+5. LiveCameraManager (provides 640x480 stream for WebSocket)
+6. FastAPI server (REST API + WebSocket /live endpoint on port 8000)
+
+### ❌ DO NOT Run These Commands (Common Mistakes)
+
+```bash
+# WRONG - API only, no camera system
+uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
+
+# WRONG - Standalone capture, not integrated
+python backend/capture/camera_capture.py
+```
+
+**Why these are wrong:**
+
+- `backend/api/main.py` is just the FastAPI app definition, not a complete system
+- Running uvicorn directly starts API without camera, detection, or live stream
+- `camera_capture.py` is legacy standalone code, not integrated with API/database
+- These create separate processes that don't share resources properly
+
+### System Architecture
+
+**Single Integrated Process (run_camera_system.py):**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  run_camera_system.py (ONE PROCESS)                         │
+│                                                              │
+│  ┌────────────────────────────────────────────────────┐     │
+│  │ SharedCameraManager (picamera2)                    │     │
+│  │  - Main output: 1920x1080 @ 1 FPS                  │     │
+│  │  - Lores output: 640x480 @ 10 FPS                  │     │
+│  └─────────┬────────────────────────┬──────────────────┘     │
+│            │                        │                        │
+│            ▼                        ▼                        │
+│  ┌─────────────────┐    ┌──────────────────────┐            │
+│  │ CameraCapture   │    │ LiveCameraManager    │            │
+│  │ (Thread)        │    │ (Async)              │            │
+│  │ - Save photos   │    │ - Stream frames      │            │
+│  │ - Run detection │    │ - Run detection      │            │
+│  │ - Save to DB    │    │ - Send to WebSocket  │            │
+│  └─────────────────┘    └──────────────────────┘            │
+│                                                              │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │ FastAPI App (from backend.api.main import app)       │   │
+│  │  - REST API: /photos, /detections, /stats           │   │
+│  │  - WebSocket: /live (connected to LiveCameraManager)│   │
+│  │  - Port: 8000                                        │   │
+│  └──────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Key Points:**
+
+- ONE process manages everything
+- Shared camera resource (no conflicts)
+- LiveCameraManager is assigned to `app.state.live_manager`
+- WebSocket `/live` endpoint has actual data source
+- Database writes happen in real-time
+
+### Port Configuration
+
+| Port     | Service                                     | Status           |
+| -------- | ------------------------------------------- | ---------------- |
+| **8000** | Complete backend (camera + API + WebSocket) | ✅ **DEFAULT**   |
+| 5173     | Frontend dev server (Vite)                  | Development only |
+
+**IMPORTANT:** Port 8000 is the standard and should NEVER be changed unless there's a conflict.
+
 ## Project Structure
 
 ```
 pi-yard-tracker/
+├── run_camera_system.py     # ⭐ MAIN ENTRY POINT - Start this to run everything
 ├── backend/                 # Python backend (organized by function)
-│   ├── capture/             # Camera image capture (Pi only)
-│   │   └── camera_capture.py
+│   ├── api/
+│   │   ├── main.py          # FastAPI app definition (imported by run_camera_system.py)
+│   │   ├── live_stream.py   # LiveCameraManager for WebSocket streaming
+│   │   └── routes/          # REST API endpoints
+│   ├── shared_camera.py     # SharedCameraManager (singleton, dual outputs)
+│   ├── capture/             # Camera image capture
+│   │   └── camera_capture.py  # ⚠️ LEGACY - Do not use directly
+│   ├── database/            # SQLite database integration
+│   │   ├── db.py
+│   │   ├── models.py
+│   │   └── queries.py
 │   ├── detection/           # YOLO object detection
 │   │   └── detector.py
 │   └── training/            # Custom model training (GPU required)
@@ -36,6 +131,7 @@ pi-yard-tracker/
 │       ├── cleanup_dataset.py         # Dataset cleanup
 │       └── workflow.py                # End-to-end orchestration
 ├── data/                    # Dataset storage (gitignored)
+│   ├── detections.db        # SQLite database (photos + detections + sessions)
 │   ├── synthetic_training/  # Generated images + YOLO annotations
 │   ├── training_data/       # Organized train/val/test splits
 │   │   ├── images/
@@ -46,7 +142,8 @@ pi-yard-tracker/
 │   │       ├── train/
 │   │       ├── val/
 │   │       └── test/
-│   ├── photos/              # Real captured photos
+│   ├── photos/              # Real captured photos (1920x1080 JPEGs)
+│   │   └── detections/      # Photos with bounding boxes drawn
 │   └── deer_dataset.yaml    # YOLO dataset configuration
 ├── models/                  # Model storage
 │   ├── yolov8n.pt          # Pre-trained YOLOv8 Nano (80 COCO classes) - COMMITTED
@@ -54,8 +151,15 @@ pi-yard-tracker/
 │       └── weights/
 │           ├── best.pt      # Best performing model - MUST BE COMMITTED
 │           └── last.pt      # Latest training checkpoint - optional
+├── frontend/                # React + TypeScript web UI
+│   ├── src/
+│   │   ├── pages/           # Dashboard, Photos, Detections, LiveView
+│   │   ├── components/      # ImageWithDetections (draws bboxes)
+│   │   └── api/             # API client and React hooks
+│   └── package.json         # Port 5173 (Vite dev server)
 ├── docs/                    # Documentation
-├── scripts/                 # Shell scripts for setup
+├── start_system.sh          # Helper script to start run_camera_system.py
+├── restart_system.sh        # Helper script to stop old processes and restart
 └── .env                     # Environment variables (gitignored)
 ```
 

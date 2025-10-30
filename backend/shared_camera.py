@@ -148,7 +148,7 @@ class SharedCameraManager:
         """Main capture loop - handles both photo capture and live streaming"""
         last_capture_time = 0
         capture_interval = 1.0  # 1 second for photo capture
-        stream_interval = 0.1   # 10 FPS for live streaming
+        stream_interval = 0.067   # 15 FPS for live streaming
         last_stream_time = 0
         
         while not self._should_stop:

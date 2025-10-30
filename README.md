@@ -22,42 +22,82 @@ See [docs/PHASE_2A_SUMMARY.md](docs/PHASE_2A_SUMMARY.md) and [docs/YOLO_EXPLAINE
 
 ## Quick Start
 
-### Option 1: Run with Pre-trained Model (80 Classes)
+### Complete System (Recommended)
+
+This starts everything in one process: camera capture, detection, database, API, and live streaming.
 
 ```bash
 # Initial setup (run once)
 ./setup.sh
 
-# Start API server (Terminal 1)
+# Start the complete system (captures photo every 10 seconds)
+source venv/bin/activate
+python run_camera_system.py
+
+# Or use the startup script
+./start_system.sh
+
+# Start cleanup service in another terminal - deletes photos older than 24 hours
+source venv/bin/activate
+python backend/cleanup_service.py --retention-hours 24
+```
+
+**What runs on startup:**
+
+- 📷 Camera capture (saves 1920x1080 photos every 10 seconds)
+- 🤖 YOLO detection (runs on every captured photo)
+- 💾 Database (saves photos + detections to SQLite)
+- 🌐 REST API (port 8000, access at http://localhost:8000/docs)
+- 📡 Live WebSocket stream (640x480 feed for web UI)
+
+### Custom Configuration
+
+```bash
+# Use custom model
+python run_camera_system.py --model models/custom_model/weights/best.pt
+
+# Change capture interval (default: 10 seconds)
+python run_camera_system.py --interval 5.0
+
+# Adjust confidence threshold (default: 0.25)
+python run_camera_system.py --confidence 0.5
+
+# Live stream only (no photo capture)
+python run_camera_system.py --no-capture
+
+# Photo capture only (no live stream)
+python run_camera_system.py --capture-only
+```
+
+### Legacy Mode (Separate Processes - NOT RECOMMENDED)
+
+⚠️ **This method is deprecated. Use `run_camera_system.py` instead.**
+
+<details>
+<summary>Click to expand legacy instructions</summary>
+
+```bash
+# Start API server (Terminal 1) - API ONLY, no camera
 source venv/bin/activate
 uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
 
-# Start cleanup service (Terminal 2) - deletes photos older than 24 hours
+# Start cleanup service (Terminal 2)
 source venv/bin/activate
 python backend/cleanup_service.py --retention-hours 24
 
-# Start camera capture (Terminal 3)
+# Start camera capture (Terminal 3) - STANDALONE, doesn't integrate with API
 source venv/bin/activate
 python backend/capture/camera_capture.py
 ```
 
-### Option 2: Run with Custom Trained Model
+**Problems with this approach:**
 
-```bash
-# Start API server (Terminal 1)
-source venv/bin/activate
-uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
+- Camera and API run as separate processes
+- Live streaming doesn't work (no camera feed to WebSocket)
+- Harder to manage and debug
+- Resource contention issues
 
-# Start cleanup service (Terminal 2) - deletes photos older than 24 hours
-source venv/bin/activate
-python backend/cleanup_service.py --retention-hours 24
-
-# Start camera capture with custom model (Terminal 3)
-source venv/bin/activate
-python backend/capture/camera_capture.py \
-    --model models/custom_model/weights/best.pt \
-    --confidence 0.25
-```
+</details>
 
 ### View Results
 
