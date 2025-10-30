@@ -329,7 +329,7 @@ export default function Photos() {
                   onClick={() => handlePhotoClick(photo.id)}
                   className="hover-lift"
                 >
-                  <Card.Section>
+                  <Card.Section style={{ position: "relative" }}>
                     <Image
                       src={getImageUrl(photo.filepath)}
                       alt={photo.filename}
@@ -337,6 +337,23 @@ export default function Photos() {
                       fit="cover"
                       fallbackSrc="/placeholder-image.png"
                     />
+                    {photo.marked_for_retraining && (
+                      <Tooltip label="Marked for retraining">
+                        <Badge
+                          size="sm"
+                          variant="filled"
+                          color="orange"
+                          leftSection={<IconBrain size={12} />}
+                          style={{
+                            position: "absolute",
+                            bottom: 8,
+                            right: 8,
+                          }}
+                        >
+                          Retraining
+                        </Badge>
+                      </Tooltip>
+                    )}
                   </Card.Section>
 
                   <Stack gap="xs" mt="sm">
