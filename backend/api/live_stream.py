@@ -10,50 +10,19 @@ import base64
 import time
 import asyncio
 from datetime import datetime
-from io import BytesIO
 from typing import List, Dict, Optional
 
 import numpy as np
-from PIL import Image
 from fastapi import WebSocket, WebSocketDisconnect
-
-# Import detection capabilities
-try:
-    from ultralytics import YOLO
-    YOLO_AVAILABLE = True
-except ImportError:
-    YOLO_AVAILABLE = False
 
 # Import shared camera manager
 from backend.shared_camera import get_shared_camera
 
+# Import detection and encoding
+from backend.detection.live_detection import LiveDetector
+from backend.api.frame_encoder import FrameEncoder
+
 import logging
-
-logger = logging.getLogger(__name__)
-
-import asyncio
-import json
-import time
-import base64
-import logging
-from typing import Dict, List, Optional
-from datetime import datetime
-from io import BytesIO
-
-from fastapi import WebSocket, WebSocketDisconnect
-from PIL import Image
-import cv2
-import numpy as np
-
-# Import shared camera manager
-from backend.shared_camera import get_shared_camera
-
-# Try to import YOLO
-try:
-    from ultralytics import YOLO
-    YOLO_AVAILABLE = True
-except ImportError:
-    YOLO_AVAILABLE = False
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +34,15 @@ class LiveCameraManager:
     
     def __init__(self, model_path: str = "models/custom_model/weights/best.pt"):
         self.model_path = model_path
-        self.detector = None
         self.clients: List[WebSocket] = []
-        self.confidence_threshold = 0.25
         self.shared_camera = get_shared_camera()
         self.loop = None  # Will be set when first client connects
+        
+        # Initialize detector and encoder
+        self.detector = LiveDetector(model_path)
+        self.encoder = FrameEncoder(format='JPEG', quality=85)
+        
+        # Stats tracking
         self.stats = {
             "fps": 0.0,
             "detection_count": 0,
@@ -79,19 +52,8 @@ class LiveCameraManager:
         }
         
         # Frame processing
-        self.last_frame = None
         self.frame_count = 0
         self.start_time = time.time()
-        
-        # Initialize YOLO detector
-        if YOLO_AVAILABLE:
-            try:
-                logger.info(f"🤖 Loading YOLO model for live stream: {model_path}")
-                self.detector = YOLO(model_path)
-                logger.info("✅ Live stream detector ready")
-            except Exception as e:
-                logger.error(f"❌ Failed to load live stream detector: {e}")
-                logger.error(f"❌ Failed to load live stream detector: {e}")
     
     async def add_client(self, websocket: WebSocket):
         """Add a new WebSocket client"""
@@ -129,27 +91,16 @@ class LiveCameraManager:
             frame_start = time.time()
             
             # Run detection
-            detections = self._detect_objects(frame) if self.detector else []
+            detections = self.detector.detect(frame)
             
             # Calculate processing time
             processing_time = (time.time() - frame_start) * 1000
             
             # Update stats
-            self.frame_count += 1
-            elapsed = time.time() - self.start_time
-            if elapsed >= 1.0:  # Update FPS every second
-                self.stats["fps"] = self.frame_count / elapsed
-                self.frame_count = 0
-                self.start_time = time.time()
-            
-            self.stats["processing_time"] = processing_time
-            if detections:
-                self.stats["detection_count"] += len(detections)
-                self.stats["last_detection"] = datetime.now().isoformat()
-                self.stats["active_classes"] = list(set([d["class_name"] for d in detections]))
+            self._update_stats(processing_time, detections)
             
             # Encode frame as JPEG
-            frame_jpg = self._encode_frame(frame)
+            frame_jpg = self.encoder.encode(frame)
             if frame_jpg:
                 # Send to all connected clients
                 message = {
@@ -170,76 +121,23 @@ class LiveCameraManager:
         except Exception as e:
             logger.debug(f"⚠️  Frame processing error: {e}")
     
-    def _detect_objects(self, frame: np.ndarray) -> List[Dict]:
-        """Run YOLO detection on frame"""
-        if not self.detector:
-            return []
+    def _update_stats(self, processing_time: float, detections: List[Dict]):
+        """Update streaming statistics"""
+        self.frame_count += 1
+        elapsed = time.time() - self.start_time
         
-        try:
-            # Run detection
-            results = self.detector.predict(
-                source=frame,
-                conf=self.confidence_threshold,
-                verbose=False,
-                device='cpu'  # Force CPU for real-time processing
-            )
-            
-            # Parse results
-            detections = []
-            result = results[0]
-            
-            for box in result.boxes:
-                class_id = int(box.cls[0])
-                class_name = self.detector.names[class_id]
-                confidence = float(box.conf[0])
-                
-                # Get bounding box coordinates (already in pixels)
-                x1, y1, x2, y2 = box.xyxy[0].tolist()
-                
-                # Calculate normalized coordinates
-                height, width = frame.shape[:2]
-                x_center = (x1 + x2) / 2 / width
-                y_center = (y1 + y2) / 2 / height
-                bbox_width = (x2 - x1) / width
-                bbox_height = (y2 - y1) / height
-                
-                detections.append({
-                    "id": f"live_{int(time.time() * 1000)}_{len(detections)}",
-                    "class_name": class_name,
-                    "confidence": confidence,
-                    "bbox": {
-                        "x_min": x1 / width,
-                        "y_min": y1 / height,
-                        "x_max": x2 / width,
-                        "y_max": y2 / height,
-                        "x_center": x_center,
-                        "y_center": y_center,
-                        "width": bbox_width,
-                        "height": bbox_height
-                    },
-                    "timestamp": datetime.now().isoformat()
-                })
-            
-            return detections
-            
-        except Exception as e:
-            logger.debug(f"⚠️  Detection error: {e}")
-            return []
-    
-    def _encode_frame(self, frame: np.ndarray) -> Optional[bytes]:
-        """Encode frame as JPEG bytes"""
-        try:
-            # Convert to PIL Image (frame is already RGB from shared camera)
-            pil_image = Image.fromarray(frame)
-            
-            # Encode as JPEG
-            buffer = BytesIO()
-            pil_image.save(buffer, format='JPEG', quality=85, optimize=True)
-            return buffer.getvalue()
-            
-        except Exception as e:
-            logger.debug(f"⚠️  Frame encoding error: {e}")
-            return None
+        # Update FPS every second
+        if elapsed >= 1.0:
+            self.stats["fps"] = self.frame_count / elapsed
+            self.frame_count = 0
+            self.start_time = time.time()
+        
+        self.stats["processing_time"] = processing_time
+        
+        if detections:
+            self.stats["detection_count"] += len(detections)
+            self.stats["last_detection"] = datetime.now().isoformat()
+            self.stats["active_classes"] = list(set([d["class_name"] for d in detections]))
     
     async def _broadcast_message(self, message: Dict):
         """Broadcast message to all connected clients"""
@@ -263,8 +161,7 @@ class LiveCameraManager:
     
     def update_confidence_threshold(self, threshold: float):
         """Update detection confidence threshold"""
-        self.confidence_threshold = max(0.0, min(1.0, threshold))
-        logger.info(f"🎯 Updated live stream confidence threshold: {self.confidence_threshold}")
+        self.detector.update_confidence_threshold(threshold)
     
     def get_stats(self) -> Dict:
         """Get current streaming statistics"""

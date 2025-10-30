@@ -28,21 +28,8 @@ from backend.detection.detector import YOLODetector
 from backend.api.live_stream import LiveCameraManager
 from backend.api.main import app
 from backend.cleanup_service import PhotoCleanupService
+from backend.capture.photo_capture import PhotoCaptureService
 import uvicorn
-
-# Database imports
-try:
-    from backend.database import (
-        create_photo,
-        create_detection,
-        update_photo_detections,
-        create_session,
-        end_session
-    )
-    DATABASE_AVAILABLE = True
-except ImportError:
-    DATABASE_AVAILABLE = False
-    print("⚠️  Database not available - detections will not be saved to database")
 
 # Configure logging
 logging.basicConfig(
@@ -55,11 +42,10 @@ logger = logging.getLogger(__name__)
 # Global references for cleanup
 shared_camera = None
 live_manager = None
-capture_thread = None
+photo_capture_service = None
 cleanup_service = None
 cleanup_thread = None
 api_server = None
-detector = None
 
 def signal_handler(signum, frame):
     """Handle shutdown signals gracefully"""
@@ -68,7 +54,11 @@ def signal_handler(signum, frame):
 
 def cleanup_and_exit():
     """Clean up camera system components"""
-    global shared_camera, live_manager, cleanup_service
+    global shared_camera, live_manager, photo_capture_service, cleanup_service
+    
+    # Stop photo capture service
+    if photo_capture_service:
+        photo_capture_service.stop()
     
     # Stop cleanup service
     if cleanup_service:
@@ -80,128 +70,6 @@ def cleanup_and_exit():
     
     logger.info("✅ Cleanup complete")
     sys.exit(0)
-
-def capture_loop(photo_dir, detector=None, interval=1.0, model_name=None, confidence=0.25):
-    """Photo capture loop with database integration"""
-    global shared_camera
-    
-    capture_count = 0
-    detection_count = 0
-    session_id = None
-    last_capture_time = 0
-    
-    # Create database session if available
-    if DATABASE_AVAILABLE and detector:
-        try:
-            session_id = create_session(
-                model_name=model_name,
-                confidence_threshold=confidence
-            )
-            logger.info(f"🎬 Created database session {session_id}")
-        except Exception as e:
-            logger.warning(f"⚠️  Failed to create database session: {e}")
-    
-    def handle_frame(frame, frame_type):
-        """Callback to handle captured frames"""
-        nonlocal capture_count, detection_count, last_capture_time
-        
-        # Only process capture frames (not stream frames)
-        if frame_type != "capture":
-            return
-        
-        # Respect the interval setting
-        current_time = time.time()
-        if current_time - last_capture_time < interval:
-            return
-        
-        last_capture_time = current_time
-        
-        try:
-            # Generate filename with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:-3]
-            filename = f"photo_{timestamp}.jpg"
-            photo_path = photo_dir / filename
-            
-            # Save frame as JPEG
-            img = Image.fromarray(frame)
-            img.save(photo_path, 'JPEG', quality=95)
-            
-            capture_count += 1
-            photo_id = None
-            
-            # Save photo to database
-            if DATABASE_AVAILABLE:
-                try:
-                    # Get image dimensions
-                    width, height = img.size
-                    
-                    photo_id = create_photo(
-                        filename=filename,
-                        filepath=str(photo_path.absolute()),
-                        width=width,
-                        height=height,
-                        captured_at=datetime.now()
-                    )
-                    logger.debug(f"💾 Saved photo to database (ID: {photo_id})")
-                except Exception as e:
-                    logger.warning(f"⚠️  Failed to save photo to database: {e}")
-            
-            # Run detection if detector available
-            if detector:
-                detections = detector.detect(photo_path, save_visualization=True)
-                if detections:
-                    detection_count += 1
-                    logger.info(f"🦌 Found {len(detections)} objects in {filename}")
-                    
-                    # Save detections to database
-                    if DATABASE_AVAILABLE and photo_id:
-                        try:
-                            for det in detections:
-                                bbox_norm = det['bbox_norm']
-                                create_detection(
-                                    photo_id=photo_id,
-                                    class_name=det['class'],
-                                    confidence=det['confidence'],
-                                    bbox_x=bbox_norm['x'],
-                                    bbox_y=bbox_norm['y'],
-                                    bbox_width=bbox_norm['width'],
-                                    bbox_height=bbox_norm['height'],
-                                    model_name=model_name
-                                )
-                            
-                            # Update photo detection count
-                            update_photo_detections(photo_id, len(detections))
-                            logger.debug(f"💾 Saved {len(detections)} detections to database")
-                        except Exception as e:
-                            logger.warning(f"⚠️  Failed to save detections to database: {e}")
-            
-            # Log every 10 captures
-            if capture_count % 10 == 0:
-                logger.info(f"📊 {capture_count} photos, {detection_count} with detections")
-        
-        except Exception as e:
-            logger.error(f"❌ Error processing frame: {e}")
-    
-    # Register callback with shared camera
-    shared_camera.register_capture_callback(handle_frame)
-    
-    try:
-        # Wait for shutdown signal
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        logger.info("⏸️  Capture loop interrupted")
-    finally:
-        # Cleanup: unregister callback
-        shared_camera.remove_capture_callback(handle_frame)
-        
-        # End database session when loop exits
-        if DATABASE_AVAILABLE and session_id:
-            try:
-                end_session(session_id, capture_count, detection_count)
-                logger.info(f"🎬 Ended database session {session_id}")
-            except Exception as e:
-                logger.warning(f"⚠️  Failed to end database session: {e}")
 
 async def run_api_server(host="0.0.0.0", port=8000):
     """Run the FastAPI server"""
@@ -221,7 +89,7 @@ async def run_api_server(host="0.0.0.0", port=8000):
 
 def main():
     """Main entrypoint - ONLY camera system"""
-    global shared_camera, camera_capture, live_manager, capture_thread, detector, cleanup_service, cleanup_thread
+    global shared_camera, live_manager, photo_capture_service, cleanup_service, cleanup_thread
     
     # Parse arguments
     parser = argparse.ArgumentParser(description='Pi Yard Tracker - Complete Camera System')
@@ -243,7 +111,6 @@ def main():
     logger.info("🐾 Pi Yard Tracker - Camera System")
     logger.info(f"📷 Capture: {'No' if args.no_capture else 'Yes'}")
     logger.info(f"📡 Live stream: {'No' if args.capture_only else 'Yes'}")
-    logger.info(f"💾 Database: {'Enabled' if DATABASE_AVAILABLE else 'Disabled'}")
     if not args.no_capture:
         logger.info(f"📦 Model: {args.model}")
         logger.info(f"📊 Confidence: {args.confidence}")
@@ -274,13 +141,16 @@ def main():
             # Initialize detector
             detector = YOLODetector(model_name=args.model, confidence_threshold=args.confidence)
             
-            # Start capture thread
-            capture_thread = threading.Thread(
-                target=capture_loop,
-                args=(photo_dir, detector, args.interval, args.model, args.confidence),
-                daemon=True
+            # Create and start photo capture service
+            photo_capture_service = PhotoCaptureService(
+                shared_camera=shared_camera,
+                photo_dir=photo_dir,
+                detector=detector,
+                interval=args.interval,
+                model_name=args.model,
+                confidence=args.confidence
             )
-            capture_thread.start()
+            photo_capture_service.start()
         
         # 4. Start live stream (if enabled)
         if not args.capture_only:
