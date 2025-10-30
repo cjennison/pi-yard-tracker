@@ -114,9 +114,12 @@ export default function LiveView() {
                 (det: Detection) => det.confidence >= confidenceThreshold / 100
               );
               setDetections(newDetections);
-              
+
               if (newDetections.length > 0) {
-                console.log(`Received ${newDetections.length} detections:`, newDetections);
+                console.log(
+                  `Received ${newDetections.length} detections:`,
+                  newDetections
+                );
               }
 
               // Add to recent detections (keep last 10)
@@ -134,7 +137,7 @@ export default function LiveView() {
             // Update img element with new frame
             if (videoRef.current && data.image) {
               videoRef.current.src = `data:image/jpeg;base64,${data.image}`;
-              setFrameCount(prev => prev + 1); // Trigger canvas redraw
+              setFrameCount((prev) => prev + 1); // Trigger canvas redraw
             }
           }
         } catch (err) {

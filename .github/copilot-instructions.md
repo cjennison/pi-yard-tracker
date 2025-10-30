@@ -31,11 +31,12 @@ python run_camera_system.py
 **This single command starts:**
 
 1. SharedCameraManager (camera coordination with dual outputs)
-2. CameraCapture thread (saves 1920x1080 photos every 10 seconds)
-3. YOLODetector (runs detection on every photo)
-4. Database integration (saves photos + detections to SQLite)
-5. LiveCameraManager (provides 640x480 stream for WebSocket)
-6. FastAPI server (REST API + WebSocket /live endpoint on port 8000)
+2. PhotoCleanupService (automatic old photo deletion in background thread)
+3. CameraCapture thread (saves 1920x1080 photos every 10 seconds)
+4. YOLODetector (runs detection on every photo)
+5. Database integration (saves photos + detections to SQLite)
+6. LiveCameraManager (provides 640x480 stream for WebSocket)
+7. FastAPI server (REST API + WebSocket /live endpoint on port 8000)
 
 ### ❌ DO NOT Run These Commands (Common Mistakes)
 
@@ -43,15 +44,20 @@ python run_camera_system.py
 # WRONG - API only, no camera system
 uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
 
-# WRONG - Standalone capture, not integrated
+# WRONG - Legacy files DELETED
 python backend/capture/camera_capture.py
+python backend/capture/shared_camera_integration.py
+
+# WRONG - Cleanup is now integrated into run_camera_system.py
+python backend/cleanup_service.py
 ```
 
 **Why these are wrong:**
 
 - `backend/api/main.py` is just the FastAPI app definition, not a complete system
 - Running uvicorn directly starts API without camera, detection, or live stream
-- `camera_capture.py` is legacy standalone code, not integrated with API/database
+- `camera_capture.py` and `shared_camera_integration.py` were DELETED (legacy code)
+- `cleanup_service.py` is now integrated into run_camera_system.py startup
 - These create separate processes that don't share resources properly
 
 ### System Architecture
@@ -65,7 +71,7 @@ python backend/capture/camera_capture.py
 │  ┌────────────────────────────────────────────────────┐     │
 │  │ SharedCameraManager (picamera2)                    │     │
 │  │  - Main output: 1920x1080 @ 1 FPS                  │     │
-│  │  - Lores output: 640x480 @ 10 FPS                  │     │
+│  │  - Lores output: 640x480 @ 15 FPS                  │     │
 │  └─────────┬────────────────────────┬──────────────────┘     │
 │            │                        │                        │
 │            ▼                        ▼                        │
@@ -76,6 +82,13 @@ python backend/capture/camera_capture.py
 │  │ - Run detection │    │ - Run detection      │            │
 │  │ - Save to DB    │    │ - Send to WebSocket  │            │
 │  └─────────────────┘    └──────────────────────┘            │
+│                                                              │
+│  ┌──────────────────────────────────────────────────────┐   │
+│  │ PhotoCleanupService (Thread)                         │   │
+│  │  - Deletes photos older than retention period        │   │
+│  │  - Preserves database records                        │   │
+│  │  - Runs every 5 minutes (default)                    │   │
+│  └──────────────────────────────────────────────────────┘   │
 │                                                              │
 │  ┌──────────────────────────────────────────────────────┐   │
 │  │ FastAPI App (from backend.api.main import app)       │   │
@@ -114,8 +127,7 @@ pi-yard-tracker/
 │   │   ├── live_stream.py   # LiveCameraManager for WebSocket streaming
 │   │   └── routes/          # REST API endpoints
 │   ├── shared_camera.py     # SharedCameraManager (singleton, dual outputs)
-│   ├── capture/             # Camera image capture
-│   │   └── camera_capture.py  # ⚠️ LEGACY - Do not use directly
+│   ├── cleanup_service.py   # PhotoCleanupService (integrated into run_camera_system.py)
 │   ├── database/            # SQLite database integration
 │   │   ├── db.py
 │   │   ├── models.py

@@ -31,11 +31,20 @@ class YOLODetector:
         Initialize YOLO detector
         
         Args:
-            model_name: Model to use ('yolov8n.pt' for nano, 'yolov8s.pt' for small, etc.)
+            model_name: Model to use ('yolov8n.pt' for nano, or full path like 'models/custom_model/weights/best.pt')
             confidence_threshold: Minimum confidence score to consider a detection (0.0-1.0)
         """
         self.confidence_threshold = confidence_threshold
-        self.model_path = Path('models') / model_name
+        
+        # Handle both simple names and full paths
+        model_path = Path(model_name)
+        if model_path.is_absolute() or str(model_name).startswith('models/'):
+            # Already a full path or starts with models/
+            self.model_path = model_path
+        else:
+            # Simple name like 'yolov8n.pt' - add models/ prefix
+            self.model_path = Path('models') / model_name
+        
         self.model = None
         
         logger.info(f"🤖 Initializing YOLO detector...")
@@ -102,16 +111,29 @@ class YOLODetector:
             detections = []
             result = results[0]  # First (and only) image
             
+            # Get image dimensions for normalization
+            img_height, img_width = result.orig_shape
+            
             for box in result.boxes:
                 class_id = int(box.cls[0])
                 class_name = self.class_names[class_id]
                 confidence = float(box.conf[0])
                 bbox = box.xyxy[0].tolist()  # [x1, y1, x2, y2]
                 
+                # Calculate normalized bbox for database
+                x1, y1, x2, y2 = bbox
+                bbox_norm = {
+                    'x': (x1 + x2) / 2 / img_width,      # center x (normalized)
+                    'y': (y1 + y2) / 2 / img_height,     # center y (normalized)
+                    'width': (x2 - x1) / img_width,       # width (normalized)
+                    'height': (y2 - y1) / img_height      # height (normalized)
+                }
+                
                 detection = {
                     'class': class_name,
                     'confidence': confidence,
-                    'bbox': bbox
+                    'bbox': bbox,
+                    'bbox_norm': bbox_norm
                 }
                 detections.append(detection)
             

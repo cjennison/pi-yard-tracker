@@ -24,22 +24,18 @@ See [docs/PHASE_2A_SUMMARY.md](docs/PHASE_2A_SUMMARY.md) and [docs/YOLO_EXPLAINE
 
 ### Complete System (Recommended)
 
-This starts everything in one process: camera capture, detection, database, API, and live streaming.
+This starts everything in one process: camera capture, detection, database, API, live streaming, and automatic cleanup.
 
 ```bash
 # Initial setup (run once)
 ./setup.sh
 
-# Start the complete system (captures photo every 10 seconds)
+# Start the complete system (captures photo every 10 seconds, auto-cleanup every 5 minutes)
 source venv/bin/activate
 python run_camera_system.py
 
 # Or use the startup script
 ./start_system.sh
-
-# Start cleanup service in another terminal - deletes photos older than 24 hours
-source venv/bin/activate
-python backend/cleanup_service.py --retention-hours 24
 ```
 
 **What runs on startup:**
@@ -49,6 +45,7 @@ python backend/cleanup_service.py --retention-hours 24
 - 💾 Database (saves photos + detections to SQLite)
 - 🌐 REST API (port 8000, access at http://localhost:8000/docs)
 - 📡 Live WebSocket stream (640x480 feed for web UI)
+- 🧹 Automatic cleanup (deletes photos older than 1 hour, preserves DB records)
 
 ### Custom Configuration
 
@@ -59,15 +56,26 @@ python run_camera_system.py --model models/custom_model/weights/best.pt
 # Change capture interval (default: 10 seconds)
 python run_camera_system.py --interval 5.0
 
+# Change photo retention (default: 1 hour)
+python run_camera_system.py --retention-hours 24
+
+# Change cleanup check interval (default: 300 seconds = 5 minutes)
+python run_camera_system.py --cleanup-interval 600
+```
+
 # Adjust confidence threshold (default: 0.25)
+
 python run_camera_system.py --confidence 0.5
 
 # Live stream only (no photo capture)
+
 python run_camera_system.py --no-capture
 
 # Photo capture only (no live stream)
+
 python run_camera_system.py --capture-only
-```
+
+````
 
 ### Legacy Mode (Separate Processes - NOT RECOMMENDED)
 
@@ -88,7 +96,7 @@ python backend/cleanup_service.py --retention-hours 24
 # Start camera capture (Terminal 3) - STANDALONE, doesn't integrate with API
 source venv/bin/activate
 python backend/capture/camera_capture.py
-```
+````
 
 **Problems with this approach:**
 

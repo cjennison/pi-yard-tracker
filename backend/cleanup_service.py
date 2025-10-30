@@ -74,9 +74,8 @@ class PhotoCleanupService:
         self.running = True
         logger.info("🚀 Cleanup service started")
         
-        # Setup signal handlers for graceful shutdown
-        signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
+        # Note: Signal handlers can only be set in the main thread
+        # When running as a daemon thread, the parent process handles signals
         
         try:
             while self.running:

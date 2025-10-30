@@ -5,6 +5,7 @@
 # 1. Camera capture (saves photos + detections to database)
 # 2. Live streaming (WebSocket feed with detections)
 # 3. FastAPI server (REST API + WebSocket endpoint)
+# 4. Automatic cleanup service (deletes old photos)
 
 echo "🐾 Starting Pi Yard Tracker System"
 echo "===================================="
