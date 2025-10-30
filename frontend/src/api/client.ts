@@ -1,8 +1,14 @@
 import axios from "axios";
 
+// Detect if running on Pi (localhost) or accessing from desktop (use Pi's IP)
+const API_BASE_URL =
+  window.location.hostname === "localhost"
+    ? "http://localhost:8000/api" // Accessing from Pi itself
+    : `http://${window.location.hostname}:8000/api`; // Accessing from desktop using Pi's IP
+
 // Base API client pointing to FastAPI backend on port 8000
 const apiClient = axios.create({
-  baseURL: "http://localhost:8000/api",
+  baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },

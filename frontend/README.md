@@ -100,13 +100,17 @@ xl: 1200px   /* Large desktop */
 # Install dependencies
 npm install
 
-# Start development server
+# Start development server (NOT recommended for Raspberry Pi - too memory intensive)
 npm run dev
 
 # Build for production
 npm run build
 
-# Preview production build
+# Serve production build (RECOMMENDED for Raspberry Pi - low memory usage)
+cd dist
+python3 -m http.server 5173
+
+# Preview production build (alternative using Vite)
 npm run preview
 ```
 
@@ -166,12 +170,40 @@ src/
 
 ## 🚀 Getting Started
 
+### For Raspberry Pi (Recommended)
+
+1. **Start the backend server** (ensure it's running on port 8000)
+
+   ```bash
+   cd /home/cjennison/src/pi-yard-tracker
+   source venv/bin/activate
+   uvicorn backend.api.main:app --host 0.0.0.0 --port 8000
+   ```
+
+2. **Build the frontend** (one time, or after code changes)
+
+   ```bash
+   cd frontend
+   npm run build
+   ```
+
+3. **Serve the production build**
+
+   ```bash
+   cd dist
+   python3 -m http.server 5173
+   ```
+
+4. **Open browser**: Navigate to `http://localhost:5173`
+
+The frontend will connect to the API at `http://localhost:8000` and display real-time wildlife detection data.
+
+### For Development Machine (Laptop/Desktop)
+
 1. **Start the backend server** (ensure it's running on port 8000)
 2. **Install frontend dependencies**: `npm install`
 3. **Start development server**: `npm run dev`
 4. **Open browser**: Navigate to `http://localhost:5173`
-
-The frontend will connect to the API at `http://localhost:8000` and display real-time wildlife detection data.
 
 ## 🔮 Future Enhancements
 
