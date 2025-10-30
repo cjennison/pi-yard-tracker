@@ -1,27 +1,92 @@
 """
 Active learning query functions
 
-Handles marking photos for retraining and managing the annotation workflow.
+Handles marking photos for retraining and uploading to Azure Blob Storage.
 """
 
 import logging
-import shutil
+import os
 from pathlib import Path
 from datetime import datetime
 from typing import Optional
 
+from dotenv import load_dotenv
+from azure.storage.blob import BlobServiceClient, ContentSettings
+
 from ..db import get_db
+
+# Load environment variables
+load_dotenv()
 
 logger = logging.getLogger(__name__)
 
 
-def mark_photo_for_retraining(photo_id: int, to_annotate_dir: Path = Path("data/to_annotate")) -> bool:
+def _get_blob_service_client() -> Optional[BlobServiceClient]:
+    """Get Azure Blob Storage client"""
+    connection_string = os.getenv("AZURE_STORAGE_CONNECTION_STRING")
+    
+    if not connection_string:
+        logger.warning("⚠️  AZURE_STORAGE_CONNECTION_STRING not set in .env")
+        return None
+    
+    try:
+        return BlobServiceClient.from_connection_string(connection_string)
+    except Exception as e:
+        logger.error(f"❌ Failed to create Azure Blob client: {e}")
+        return None
+
+
+def _upload_to_blob_storage(photo_path: Path, photo_filename: str) -> bool:
     """
-    Mark a photo for retraining and copy it to annotation directory
+    Upload photo to Azure Blob Storage
+    
+    Args:
+        photo_path: Local path to photo file
+        photo_filename: Name of the file
+    
+    Returns:
+        True if successful, False otherwise
+    """
+    blob_client_service = _get_blob_service_client()
+    if not blob_client_service:
+        return False
+    
+    container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "retraining-photos")
+    
+    try:
+        # Get container client (create container if it doesn't exist)
+        container_client = blob_client_service.get_container_client(container_name)
+        try:
+            container_client.create_container()
+            logger.info(f"📦 Created container: {container_name}")
+        except Exception:
+            # Container already exists, that's fine
+            pass
+        
+        # Upload file
+        blob_client = container_client.get_blob_client(photo_filename)
+        
+        with open(photo_path, "rb") as data:
+            blob_client.upload_blob(
+                data,
+                overwrite=True,
+                content_settings=ContentSettings(content_type="image/jpeg")
+            )
+        
+        logger.info(f"☁️  Uploaded {photo_filename} to Azure Blob Storage")
+        return True
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to upload to blob storage: {e}")
+        return False
+
+
+def mark_photo_for_retraining(photo_id: int) -> bool:
+    """
+    Mark a photo for retraining and upload to Azure Blob Storage
     
     Args:
         photo_id: ID of the photo to mark
-        to_annotate_dir: Directory to copy photo to for annotation
     
     Returns:
         True if successful, False otherwise
@@ -47,18 +112,16 @@ def mark_photo_for_retraining(photo_id: int, to_annotate_dir: Path = Path("data/
                 logger.info(f"ℹ️  Photo {photo_id} already marked for retraining")
                 return True
             
-            # Create to_annotate directory if it doesn't exist
-            to_annotate_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Copy photo to annotation directory
+            # Check if photo file exists
             source_path = Path(photo['filepath'])
             if not source_path.exists():
                 logger.error(f"❌ Photo file not found: {source_path}")
                 return False
             
-            dest_path = to_annotate_dir / photo['filename']
-            shutil.copy2(source_path, dest_path)
-            logger.info(f"📋 Copied {photo['filename']} to {to_annotate_dir}")
+            # Upload to Azure Blob Storage
+            if not _upload_to_blob_storage(source_path, photo['filename']):
+                logger.error(f"❌ Failed to upload {photo['filename']} to cloud storage")
+                return False
             
             # Update database
             cursor.execute(
@@ -71,7 +134,7 @@ def mark_photo_for_retraining(photo_id: int, to_annotate_dir: Path = Path("data/
             )
             conn.commit()
             
-            logger.info(f"✅ Marked photo {photo_id} for retraining")
+            logger.info(f"✅ Marked photo {photo_id} for retraining and uploaded to cloud")
             return True
         
     except Exception as e:

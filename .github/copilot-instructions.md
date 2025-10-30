@@ -1,5 +1,9 @@
 # GitHub Copilot Instructions for Pi Yard Tracker
 
+## Agent Rules
+
+- Running Sleep for any reason is forbidden.
+
 ## Project Overview
 
 **Pi Yard Tracker** is a Raspberry Pi-based wildlife detection system that uses computer vision to identify and track animals in a backyard setting. The project runs locally on a Raspberry Pi 5 with an OV5647 camera module, performing real-time object detection using YOLO models.
