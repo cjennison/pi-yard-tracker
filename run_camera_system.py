@@ -2,12 +2,11 @@
 """
 Pi Yard Tracker - Camera System Entrypoint
 
-ONLY does:
+Complete system:
 1. Start SharedCameraManager (camera coordination)
-2. Start CameraCapture (save photos + run detections)
+2. Start CameraCapture (save photos + run detections + save to database)
 3. Start LiveStream WebSocket server
-
-That's it. Database, cleanup, sessions handled elsewhere.
+4. Run FastAPI server
 """
 
 import argparse
@@ -18,6 +17,8 @@ import sys
 import threading
 import time
 from pathlib import Path
+from datetime import datetime
+from PIL import Image
 
 # Add project root to path
 sys.path.append(str(Path(__file__).parent))
@@ -27,6 +28,20 @@ from backend.capture.camera_capture import CameraCapture, YOLODetector
 from backend.api.live_stream import LiveCameraManager
 from backend.api.main import app
 import uvicorn
+
+# Database imports
+try:
+    from backend.database import (
+        create_photo,
+        create_detection,
+        update_photo_detections,
+        create_session,
+        end_session
+    )
+    DATABASE_AVAILABLE = True
+except ImportError:
+    DATABASE_AVAILABLE = False
+    print("⚠️  Database not available - detections will not be saved to database")
 
 # Configure logging
 logging.basicConfig(
@@ -66,10 +81,22 @@ def cleanup_and_exit():
     logger.info("✅ Cleanup complete")
     sys.exit(0)
 
-def capture_loop(camera_capture, detector=None, interval=1.0):
-    """Simple photo capture loop with detection"""
+def capture_loop(camera_capture, detector=None, interval=1.0, model_name=None, confidence=0.25):
+    """Photo capture loop with database integration"""
     capture_count = 0
     detection_count = 0
+    session_id = None
+    
+    # Create database session if available
+    if DATABASE_AVAILABLE and detector:
+        try:
+            session_id = create_session(
+                model_name=model_name,
+                confidence_threshold=confidence
+            )
+            logger.info(f"🎬 Created database session {session_id}")
+        except Exception as e:
+            logger.warning(f"⚠️  Failed to create database session: {e}")
     
     try:
         while True:
@@ -78,6 +105,25 @@ def capture_loop(camera_capture, detector=None, interval=1.0):
             
             if photo_path:
                 capture_count += 1
+                photo_id = None
+                
+                # Save photo to database
+                if DATABASE_AVAILABLE:
+                    try:
+                        # Get image dimensions
+                        img = Image.open(photo_path)
+                        width, height = img.size
+                        
+                        photo_id = create_photo(
+                            filename=photo_path.name,
+                            filepath=str(photo_path.absolute()),
+                            width=width,
+                            height=height,
+                            captured_at=datetime.now()
+                        )
+                        logger.debug(f"💾 Saved photo to database (ID: {photo_id})")
+                    except Exception as e:
+                        logger.warning(f"⚠️  Failed to save photo to database: {e}")
                 
                 # Run detection if detector available
                 if detector:
@@ -85,6 +131,28 @@ def capture_loop(camera_capture, detector=None, interval=1.0):
                     if detections:
                         detection_count += 1
                         logger.info(f"🦌 Found {len(detections)} objects in {photo_path.name}")
+                        
+                        # Save detections to database
+                        if DATABASE_AVAILABLE and photo_id:
+                            try:
+                                for det in detections:
+                                    bbox_norm = det['bbox_norm']
+                                    create_detection(
+                                        photo_id=photo_id,
+                                        class_name=det['class'],
+                                        confidence=det['confidence'],
+                                        bbox_x=bbox_norm['x'],
+                                        bbox_y=bbox_norm['y'],
+                                        bbox_width=bbox_norm['width'],
+                                        bbox_height=bbox_norm['height'],
+                                        model_name=model_name
+                                    )
+                                
+                                # Update photo detection count
+                                update_photo_detections(photo_id, len(detections))
+                                logger.debug(f"💾 Saved {len(detections)} detections to database")
+                            except Exception as e:
+                                logger.warning(f"⚠️  Failed to save detections to database: {e}")
                 
                 # Log every 10 captures
                 if capture_count % 10 == 0:
@@ -94,6 +162,14 @@ def capture_loop(camera_capture, detector=None, interval=1.0):
             
     except Exception as e:
         logger.error(f"❌ Capture error: {e}")
+    finally:
+        # End database session when loop exits
+        if DATABASE_AVAILABLE and session_id:
+            try:
+                end_session(session_id, capture_count, detection_count)
+                logger.info(f"🎬 Ended database session {session_id}")
+            except Exception as e:
+                logger.warning(f"⚠️  Failed to end database session: {e}")
 
 async def run_api_server(host="0.0.0.0", port=8000):
     """Run the FastAPI server"""
@@ -133,6 +209,11 @@ def main():
     logger.info("🐾 Pi Yard Tracker - Camera System")
     logger.info(f"📷 Capture: {'No' if args.no_capture else 'Yes'}")
     logger.info(f"📡 Live stream: {'No' if args.capture_only else 'Yes'}")
+    logger.info(f"💾 Database: {'Enabled' if DATABASE_AVAILABLE else 'Disabled'}")
+    if not args.no_capture:
+        logger.info(f"📦 Model: {args.model}")
+        logger.info(f"📊 Confidence: {args.confidence}")
+        logger.info(f"⏱️  Interval: {args.interval}s")
     
     try:
         # 1. Start shared camera
@@ -153,7 +234,7 @@ def main():
             # Start capture thread
             capture_thread = threading.Thread(
                 target=capture_loop,
-                args=(camera_capture, detector, args.interval),
+                args=(camera_capture, detector, args.interval, args.model, args.confidence),
                 daemon=True
             )
             capture_thread.start()

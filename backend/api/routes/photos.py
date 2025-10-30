@@ -16,7 +16,7 @@ from ..schemas import PhotoResponse, PhotoWithDetections
 router = APIRouter(prefix="/photos", tags=["photos"])
 
 
-@router.get("/", response_model=List[PhotoResponse])
+@router.get("/", response_model=List[PhotoWithDetections])
 def list_photos(
     limit: int = Query(100, ge=1, le=500, description="Maximum number of photos to return"),
     offset: int = Query(0, ge=0, description="Number of photos to skip (pagination)"),
@@ -46,8 +46,16 @@ def list_photos(
         end_date=end_dt
     )
     
-    # Convert to response format
-    return [PhotoResponse(**photo.to_dict()) for photo in photos]
+    # Convert to response format with detections
+    result = []
+    for photo in photos:
+        photo_dict = photo.to_dict()
+        # Get detections for this photo
+        detections = get_detections_for_photo(photo.id)
+        photo_dict['detections'] = [det.to_dict() for det in detections]
+        result.append(PhotoWithDetections(**photo_dict))
+    
+    return result
 
 
 @router.get("/{photo_id}", response_model=PhotoWithDetections)

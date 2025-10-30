@@ -78,7 +78,7 @@ class Detection:
             bbox_y=row['bbox_y'],
             bbox_width=row['bbox_width'],
             bbox_height=row['bbox_height'],
-            model_name=row.get('model_name'),
+            model_name=row['model_name'] if row['model_name'] else None,
             created_at=datetime.fromisoformat(row['created_at'])
         )
     
@@ -118,8 +118,8 @@ class DetectionSession:
             id=row['id'],
             started_at=datetime.fromisoformat(row['started_at']),
             ended_at=datetime.fromisoformat(row['ended_at']) if row['ended_at'] else None,
-            model_name=row.get('model_name'),
-            confidence_threshold=row.get('confidence_threshold'),
+            model_name=row['model_name'] if row['model_name'] else None,
+            confidence_threshold=row['confidence_threshold'] if row['confidence_threshold'] else None,
             photo_count=row['photo_count'],
             detection_count=row['detection_count']
         )
