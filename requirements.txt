@@ -1,18 +1,18 @@
-# Phase 1 Requirements
+# Core Dependencies
 # Note: picamera2 is installed system-wide on Raspberry Pi OS
 # Create venv with --system-site-packages to access it
 
-# Phase 2A Requirements - Object Detection
+# Object Detection
 ultralytics>=8.0.0        # YOLOv8 framework
 opencv-python-headless>=4.8.0  # Image processing (headless for Pi, no GUI)
 pillow>=10.0.0           # Image handling
 
-# Phase 2B Requirements - Synthetic Training Data Generation
+# Synthetic Training Data Generation
 openai>=1.0.0            # OpenAI API client (DALL-E 3 for image generation)
 python-dotenv>=1.0.0     # Environment variable management
 requests>=2.31.0         # HTTP requests for downloading generated images
 
-# Phase 3 Requirements - Database + API
+# Database + API
 fastapi>=0.104.0         # REST API framework
 uvicorn[standard]>=0.24.0 # ASGI server
 pydantic>=2.0.0          # Data validation (included with FastAPI)
@@ -20,6 +20,6 @@ pydantic>=2.0.0          # Data validation (included with FastAPI)
 # Active Learning - Azure Blob Storage
 azure-storage-blob>=12.19.0  # Azure Blob Storage SDK
 
-# Future phases (will be uncommented as needed)
+# Optional dependencies (uncomment as needed)
 # websockets>=12.0
 # python-multipart>=0.0.6

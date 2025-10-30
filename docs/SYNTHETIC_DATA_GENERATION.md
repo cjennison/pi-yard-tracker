@@ -7,10 +7,13 @@
 ## Two Powerful Modes
 
 ### Mode 1: Generate From Scratch 🎨
+
 Use DALL-E 3 to create entirely new images based on text descriptions.
 
 ### Mode 2: Edit Your Photos 📸 (RECOMMENDED!)
+
 **Insert deer into YOUR actual backyard photos!** This is better because:
+
 - Uses your exact environment (lighting, terrain, camera angle)
 - More realistic than AI-generated backgrounds
 - Cheaper ($0.02 vs $0.04 per image)
@@ -19,6 +22,7 @@ Use DALL-E 3 to create entirely new images based on text descriptions.
 ## How It Works
 
 ### Mode 1: Generate From Scratch
+
 ```
 User Input:
   "white-tailed deer" + "New Hampshire backyard"
@@ -41,6 +45,7 @@ Training Data:
 ```
 
 ### Mode 2: Edit Your Photo (NEW!)
+
 ```
 Your Photo:                    Object Name:
 data/photos/backyard.jpg  +    "white-tailed deer"
@@ -68,6 +73,7 @@ Training Data:
 ```
 
 **Note:** This uses vision analysis + generation rather than direct editing, because:
+
 - DALL-E 2 edit requires masks (we don't want to manually create them)
 - DALL-E 3 doesn't support editing
 - GPT Image editing is not yet in stable API
@@ -82,7 +88,8 @@ Training Data:
 3. Click "Create new secret key"
 4. Copy the key (starts with `sk-...`)
 
-**Cost:** 
+**Cost:**
+
 - **DALL-E 3** (generate): ~$0.04 per image (standard quality, 1024x1024)
 - **Vision + DALL-E 3** (scene matching): ~$0.04-0.05 per image (includes vision analysis)
 - Using base images costs about the same but gives better scene matching!
@@ -128,6 +135,7 @@ python backend/generate_training_data.py \
 ```
 
 **Why this is better:**
+
 - Deer appears in YOUR exact environment
 - Same lighting, camera angle, background as real captures
 - Model trains on what it will actually see
@@ -190,15 +198,15 @@ Check the generated image in `data/synthetic_training/`. If it looks good, incre
 
 ## Command Line Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--object` | Object to generate/add (e.g., "white-tailed deer") | **Required** |
-| `--background` | Scene description (only for generate mode) | None (optional) |
-| `--base-image` | Path to YOUR backyard photo to edit | None (enables EDIT mode) |
-| `--count` | Number of images to generate | 1 |
-| `--class-id` | YOLO class ID (0, 1, 2...) | 0 |
-| `--output` | Output directory | data/synthetic_training |
-| `--delay` | Delay between API calls (seconds) | 2.0 |
+| Option         | Description                                        | Default                  |
+| -------------- | -------------------------------------------------- | ------------------------ |
+| `--object`     | Object to generate/add (e.g., "white-tailed deer") | **Required**             |
+| `--background` | Scene description (only for generate mode)         | None (optional)          |
+| `--base-image` | Path to YOUR backyard photo to edit                | None (enables EDIT mode) |
+| `--count`      | Number of images to generate                       | 1                        |
+| `--class-id`   | YOLO class ID (0, 1, 2...)                         | 0                        |
+| `--output`     | Output directory                                   | data/synthetic_training  |
+| `--delay`      | Delay between API calls (seconds)                  | 2.0                      |
 
 ## Complete Workflow: From Photo to Trained Model
 
@@ -271,9 +279,11 @@ data/synthetic_training/
 ```
 
 Each `.txt` file contains YOLO-format annotation:
+
 ```
 0 0.5 0.5 0.6 0.6
 ```
+
 - `0` = class ID (deer)
 - `0.5 0.5` = center coordinates (x, y) - normalized 0-1
 - `0.6 0.6` = width, height - normalized 0-1
@@ -281,15 +291,18 @@ Each `.txt` file contains YOLO-format annotation:
 ## Best Practices
 
 ### 1. Start Small
+
 ```bash
 # Generate 1-5 test images first
 --count 1
 ```
+
 Check quality before generating hundreds!
 
 ### 2. Vary Your Prompts
 
 The script automatically adds lighting variations:
+
 - Morning light
 - Afternoon sun
 - Overcast sky
@@ -311,6 +324,7 @@ But you can also create multiple batches with different backgrounds:
 ### 3. Mix Synthetic + Real Data
 
 Best results come from combining:
+
 - **70% synthetic images** (for volume and diversity)
 - **30% real photos** (for authentic edge cases)
 
@@ -330,6 +344,7 @@ The script creates centered bounding boxes (60% of image). For best accuracy:
 DALL-E 3 has rate limits. The script adds 2-second delays by default.
 
 If you get rate limit errors:
+
 ```bash
 # Increase delay to 5 seconds
 --delay 5.0
@@ -373,16 +388,19 @@ python backend/train_custom_model.py \
 ## Educational: Why This Works
 
 ### DALL-E 3 Capabilities
+
 - **Photorealistic generation**: Creates images indistinguishable from real photos
 - **Prompt adherence**: Follows detailed instructions about object placement
 - **Consistency**: Can generate hundreds of similar but varied images
 
 ### Transfer Learning Benefits
+
 - Pre-trained YOLO already knows "animal shapes"
 - Synthetic data teaches it "deer shapes specifically"
 - Mixing synthetic + real maximizes both volume and authenticity
 
 ### Annotation Quality
+
 - **Perfect consistency**: Every annotation uses same box estimation logic
 - **No human error**: No missed objects or wrong labels
 - **Fast iteration**: Generate and annotate 100 images in ~10 minutes
@@ -390,6 +408,7 @@ python backend/train_custom_model.py \
 ## Troubleshooting
 
 ### Error: "OpenAI API key not found"
+
 ```bash
 # Check .env file exists and has key
 cat .env | grep OPENAI_API_KEY
@@ -399,6 +418,7 @@ OPENAI_API_KEY=sk-...
 ```
 
 ### Error: "Rate limit exceeded"
+
 ```bash
 # Increase delay between requests
 --delay 5.0
@@ -408,6 +428,7 @@ OPENAI_API_KEY=sk-...
 ```
 
 ### Poor Image Quality
+
 ```bash
 # Improve prompt specificity
 --object "adult white-tailed deer with antlers"
@@ -415,7 +436,9 @@ OPENAI_API_KEY=sk-...
 ```
 
 ### Wrong Bounding Boxes
+
 After generation, use LabelImg to fix:
+
 ```bash
 # Install LabelImg
 pip install labelImg
@@ -443,12 +466,13 @@ After generating synthetic data:
 ## Cost Estimation
 
 | Images | Cost | Training Time | Total Time |
-|--------|------|---------------|------------|
-| 100 | $4 | ~30 min | ~45 min |
-| 500 | $20 | ~2 hours | ~3 hours |
-| 1000 | $40 | ~4 hours | ~6 hours |
+| ------ | ---- | ------------- | ---------- |
+| 100    | $4   | ~30 min       | ~45 min    |
+| 500    | $20  | ~2 hours      | ~3 hours   |
+| 1000   | $40  | ~4 hours      | ~6 hours   |
 
 **Compare to manual:**
+
 - Photography: 10-100+ hours for 1000 images
 - Annotation: 30-50 hours for 1000 images
 - Total: 40-150 hours vs 6 hours with AI generation!
@@ -465,6 +489,6 @@ Potential improvements (not implemented yet):
 
 ---
 
-**Remember:** This is PHASE 2B - Synthetic Data Generation!
+**This covers the complete Synthetic Data Generation workflow!**
 
 **Created:** October 28, 2025

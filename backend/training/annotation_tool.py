@@ -174,11 +174,12 @@ class AnnotationTool:
             unannotated = []
             for img_path in all_images:
                 annotation_path = img_path.with_suffix('.txt')
-                # Include if annotation doesn't exist or is empty
-                if not annotation_path.exists() or annotation_path.stat().st_size == 0:
+                # Include ONLY if annotation file doesn't exist at all (not yet reviewed)
+                # Excludes: images with boxes (non-empty .txt) AND negative examples (empty .txt)
+                if not annotation_path.exists():
                     unannotated.append(img_path)
             
-            logger.info(f"🔍 Filtering to unannotated images: {len(unannotated)}/{len(all_images)}")
+            logger.info(f"🔍 Filtering to unannotated images (no .txt file): {len(unannotated)}/{len(all_images)}")
             return unannotated
         
         return all_images
@@ -723,7 +724,7 @@ class AnnotationTool:
             self.load_image(self.current_index)
     
     def save_annotation(self):
-        """Save all annotations to file"""
+        """Save all annotations to file (or create empty file for negative examples)"""
         if not self.images:
             return
         
@@ -741,10 +742,11 @@ class AnnotationTool:
                 # Create visualization
                 self._save_visualization(image_path, annotation_path)
             else:
-                # No boxes - delete annotation file if exists
-                if annotation_path.exists():
-                    annotation_path.unlink()
-                self._update_status(f"⚠️  No boxes to save (deleted annotation if existed)")
+                # No boxes - create EMPTY file as negative example
+                # This tells YOLO: "This image was reviewed and contains NO objects"
+                with open(annotation_path, 'w') as f:
+                    pass  # Empty file
+                self._update_status(f"✅ Saved as negative example (empty annotation): {annotation_path.name}")
         except Exception as e:
             logger.error(f"Failed to save annotation: {e}")
             messagebox.showerror("Save Error", f"Failed to save annotation: {e}")
@@ -893,16 +895,17 @@ class AnnotationTool:
             self.load_image(self.current_index + 1)
     
     def add_to_training_set(self):
-        """Copy all annotated images to synthetic_training folder"""
+        """Copy all annotated images to synthetic_training folder (including negative examples with empty .txt files)"""
         # Get destination folder
         dest_dir = self.input_dir.parent / 'synthetic_training'
         dest_dir.mkdir(parents=True, exist_ok=True)
         
-        # Count annotated images
+        # Count annotated images (including negative examples with empty .txt files)
         annotated_images = []
         for image_path in self.images:
             annotation_path = image_path.with_suffix('.txt')
-            if annotation_path.exists() and annotation_path.stat().st_size > 0:
+            # Include if annotation file exists (even if empty - those are negative examples)
+            if annotation_path.exists():
                 annotated_images.append(image_path)
         
         if not annotated_images:

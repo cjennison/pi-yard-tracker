@@ -5,6 +5,7 @@
 ## The Revolutionary Approach
 
 Instead of manually collecting 1000 deer photos, we'll:
+
 1. ✅ Use YOUR actual backyard photos as backgrounds
 2. ✅ Have AI insert realistic deer into them
 3. ✅ Automatically create YOLO annotations
@@ -28,11 +29,11 @@ pip install openai python-dotenv requests
 
 ## Step-by-Step Guide
 
-### Phase 1: Capture Base Photos (10 minutes)
+### Step 1: Capture Base Photos (10 minutes)
 
 ```bash
 # Option A: Use existing photos from your camera
-# You already have these from Phase 1!
+# You already have these from the camera capture system!
 ls data/photos/*.jpg
 
 # Option B: Take fresh photos
@@ -42,7 +43,7 @@ ls data/photos/*.jpg
 # Save to: data/photos/base/
 ```
 
-### Phase 2: Test Generation (5 minutes)
+### Step 2: Test Generation (5 minutes)
 
 ```bash
 # Generate 1 test image to verify it works
@@ -57,7 +58,7 @@ ls -lh data/synthetic_training/
 # View the image - it should show a deer in your backyard!
 ```
 
-### Phase 3: Generate Training Dataset (1-2 hours)
+### Step 3: Generate Training Dataset (1-2 hours)
 
 ```bash
 # Strategy: Generate 50-100 images per base photo
@@ -81,7 +82,7 @@ python backend/generate_training_data.py \
     --count 50
 ```
 
-### Phase 4: Organize for YOLO Training (10 minutes)
+### Step 4: Organize for YOLO Training (10 minutes)
 
 ```bash
 # Create YOLO folder structure
@@ -111,7 +112,7 @@ mv data/synthetic_training/synthetic_*.jpg data/images/test/
 mv data/synthetic_training/synthetic_*.txt data/labels/test/
 ```
 
-### Phase 5: Configure Dataset (2 minutes)
+### Step 5: Configure Dataset (2 minutes)
 
 ```bash
 # Copy example config
@@ -121,7 +122,7 @@ cp data/deer_dataset.yaml.example data/deer_dataset.yaml
 # Verify paths point to data/images/ and data/labels/
 ```
 
-### Phase 6: Train Model (30-60 minutes)
+### Step 6: Train Model (30-60 minutes)
 
 ```bash
 # Train on laptop (recommended) or Pi
@@ -143,7 +144,7 @@ python backend/train_custom_model.py \
 # - Patience: 20 epochs without improvement = early stop
 ```
 
-### Phase 7: Test Your Model (5 minutes)
+### Step 7: Test Your Model (5 minutes)
 
 ```bash
 # Test on new images
@@ -161,7 +162,7 @@ python backend/test_custom_model.py \
 # data/photos/detections_custom/
 ```
 
-### Phase 8: Deploy to Camera System (2 minutes)
+### Step 8: Deploy to Camera System (2 minutes)
 
 ```bash
 # Edit backend/camera_capture.py
@@ -179,6 +180,7 @@ python backend/camera_capture.py
 ## Expected Results
 
 After training on 100-200 synthetic images:
+
 - **Accuracy:** 70-85% detection rate
 - **False positives:** Low (model trained on YOUR backyard)
 - **Inference time:** ~420ms (same as pre-trained model)
@@ -186,6 +188,7 @@ After training on 100-200 synthetic images:
 ## Troubleshooting
 
 ### "OpenAI API key not found"
+
 ```bash
 # Check .env file
 cat .env | grep OPENAI_API_KEY
@@ -196,6 +199,7 @@ echo "OPENAI_API_KEY=sk-your-key" >> .env
 ```
 
 ### "Base image not found"
+
 ```bash
 # Verify file exists
 ls -l data/photos/yard_20251028_204701_372.jpg
@@ -208,6 +212,7 @@ python backend/generate_training_data.py \
 ```
 
 ### Generated deer looks fake
+
 ```bash
 # Try different prompts
 --object "realistic white-tailed deer"
@@ -220,6 +225,7 @@ python backend/generate_training_data.py \
 ```
 
 ### Training accuracy is low
+
 ```bash
 # Generate more images (aim for 200-500)
 # Mix with real photos if you have any
@@ -232,12 +238,12 @@ python backend/train_custom_model.py --epochs 100
 
 ## Cost Calculator
 
-| Images | Cost (Edit Mode) | Time | Training Time |
-|--------|-----------------|------|---------------|
-| 50 | $1.00 | ~2 hours | 20-30 min |
-| 100 | $2.00 | ~4 hours | 30-45 min |
-| 200 | $4.00 | ~8 hours | 45-60 min |
-| 500 | $10.00 | ~20 hours | 1-2 hours |
+| Images | Cost (Edit Mode) | Time      | Training Time |
+| ------ | ---------------- | --------- | ------------- |
+| 50     | $1.00            | ~2 hours  | 20-30 min     |
+| 100    | $2.00            | ~4 hours  | 30-45 min     |
+| 200    | $4.00            | ~8 hours  | 45-60 min     |
+| 500    | $10.00           | ~20 hours | 1-2 hours     |
 
 **Recommended:** Start with 50-100 images, test model, generate more if needed.
 
@@ -256,8 +262,8 @@ python backend/train_custom_model.py --epochs 100
 2. **Collect edge cases** - Save images where model fails
 3. **Iterative improvement** - Generate more training data for edge cases
 4. **Add more animals** - Turkey, rabbit, fox (new class IDs)
-5. **Phase 3: Database** - Store all detections in SQLite
-6. **Phase 4: Web UI** - View timeline of animal visits
+5. **Database integration** - Store all detections in SQLite
+6. **Web UI** - View timeline of animal visits
 
 ---
 

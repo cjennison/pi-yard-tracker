@@ -723,12 +723,12 @@ names:
 7. **Commit `best.pt`**: `git add models/custom_model/weights/best.pt && git commit`
 8. **Deploy to Pi**: Pull repo, run `backend/detector.py` with custom model
 
-## Future Phases
+## Future Development
 
-- **Phase 3**: Database (SQLite) + REST API (FastAPI)
-- **Phase 4**: Web UI for viewing detections
-- **Phase 4.5**: Live camera view
-- **Phase 5**: Timeline visualization
+- Database (SQLite) + REST API (FastAPI)
+- Web UI for viewing detections
+- Live camera view
+- Timeline visualization
 
 ## Environment Variables
 

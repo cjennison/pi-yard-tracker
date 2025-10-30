@@ -1,11 +1,13 @@
 # Pi Yard Tracker - Project Plan
 
 ## Overview
+
 A local-first wildlife monitoring system that captures photos, identifies animals using on-device AI, and provides a web interface to visualize animal activity in your yard.
 
 ## Technology Stack
 
 ### Backend (Python)
+
 - **picamera2**: Raspberry Pi camera control
 - **YOLO (You Only Look Once)**: Lightweight object detection model
   - Specifically: YOLOv8n (nano) or YOLOv5s for low-resource devices
@@ -16,6 +18,7 @@ A local-first wildlife monitoring system that captures photos, identifies animal
 - **WebSockets**: Real-time camera feed and detection streaming
 
 ### Frontend (React + Mantine)
+
 - **React 18**: UI framework
 - **Mantine v7**: Component library (modern, accessible, easy to use)
 - **Recharts**: Timeline visualization
@@ -23,6 +26,7 @@ A local-first wildlife monitoring system that captures photos, identifies animal
 - **WebSocket**: Real-time camera feed and detection updates
 
 ### Why This Stack?
+
 1. **YOLO**: Industry standard for real-time object detection, runs efficiently on Raspberry Pi 4/5
 2. **Python**: Excellent ML/AI library support, native camera integration
 3. **SQLite**: No server needed, fast for read-heavy workloads
@@ -32,22 +36,26 @@ A local-first wildlife monitoring system that captures photos, identifies animal
 ## Educational Notes
 
 ### How YOLO Works
+
 - **YOLO (You Only Look Once)** divides images into a grid and predicts bounding boxes and class probabilities simultaneously
 - Unlike older methods that scan images multiple times, YOLO looks "once" - making it fast enough for real-time use
 - Pre-trained models can detect common animals (dogs, cats, birds, horses, sheep, cows, etc.) without additional training
 - Runs on CPU but benefits from GPU acceleration if available
 
 ### Hardware-AI Interaction
+
 - The camera captures raw frames → OpenCV processes them → YOLO analyzes for objects → Results stored in SQLite
 - Trade-off: Smaller models (YOLOv8n) = faster inference but less accurate; Larger models = more accurate but slower
 - Raspberry Pi 4/5 can process ~2-5 FPS with YOLOv8n, perfect for wildlife monitoring
 
-## Project Phases
+## System Components
 
-### Phase 1: Camera Capture & Basic Storage ✅ (START HERE)
+### Component 1: Camera Capture & Basic Storage ✅
+
 **Goal**: Get camera working, capture photos, implement auto-deletion
 
 **Deliverables**:
+
 - Python script that captures photos every 1 second
 - Stores photos with timestamp in filename
 - Auto-deletes photos older than 15 minutes
@@ -59,10 +67,12 @@ A local-first wildlife monitoring system that captures photos, identifies animal
 
 ---
 
-### Phase 2A: Object Detection - Pre-trained Model ✅ (NEXT)
+### Component 2: Object Detection - Pre-trained Model ✅
+
 **Goal**: Add YOLO model to detect common animals/people
 
 **Deliverables**:
+
 - Download and setup YOLOv8n pre-trained model (~6MB)
 - Process each captured image for detections
 - Detect common animals: dog, cat, bird, horse, bear, person
@@ -76,16 +86,19 @@ A local-first wildlife monitoring system that captures photos, identifies animal
 **Duration**: ~2-3 hours to implement and test
 
 **Educational Value:**
+
 - Learn how pre-trained models work
 - Understand confidence scores and thresholds
 - See YOLO in action immediately
 
 ---
 
-### Phase 2B: Custom Model Training (OPTIONAL)
+### Component 3: Custom Model Training (OPTIONAL)
+
 **Goal**: Train custom model for specific animals (deer, turkey, etc.)
 
 **Deliverables**:
+
 - Image annotation tool integration (LabelImg)
 - Dataset preparation scripts
 - Training script (runs on laptop/desktop)
@@ -98,20 +111,23 @@ A local-first wildlife monitoring system that captures photos, identifies animal
 **Duration**: ~6-10 hours (mostly annotation time)
 
 **Educational Value:**
+
 - Learn transfer learning concepts
 - Understand dataset quality requirements
 - Experience the full ML pipeline
 
-**Note**: Can be done anytime after Phase 2A. System works with pre-trained model, custom training is optional enhancement.
+**Note**: Can be done anytime. System works with pre-trained model, custom training is optional enhancement.
 
 See [docs/YOLO_TRAINING.md](YOLO_TRAINING.md) for complete training guide.
 
 ---
 
-### Phase 3: Metadata Storage & API
+### Component 4: Metadata Storage & API
+
 **Goal**: Persistent storage and REST API
 
 **Deliverables**:
+
 - SQLite database with tables for:
   - `detections`: timestamp, image_path, detection_count
   - `detected_objects`: detection_id, class_name, confidence, bbox_coordinates
@@ -128,10 +144,12 @@ See [docs/YOLO_TRAINING.md](YOLO_TRAINING.md) for complete training guide.
 
 ---
 
-### Phase 4: Web Interface - Basic View
+### Component 5: Web Interface - Basic View
+
 **Goal**: Display detections in a simple web UI
 
 **Deliverables**:
+
 - React app with Mantine UI setup
 - Homepage showing recent detections in a grid
 - Each detection shows: thumbnail, timestamp, detected animals
@@ -144,10 +162,12 @@ See [docs/YOLO_TRAINING.md](YOLO_TRAINING.md) for complete training guide.
 
 ---
 
-### Phase 4.5: Live Camera View & Real-Time Detection 🎥
+### Component 6: Live Camera View & Real-Time Detection 🎥
+
 **Goal**: See the camera feed live with detection visualization
 
 **Deliverables**:
+
 - **Live Camera Feed**: WebSocket-based MJPEG stream from camera to browser
 - **Real-time Detection Overlay**: Bounding boxes drawn on live feed as detections happen
 - **Visual Feedback**: Flash/highlight when photo is captured
@@ -156,6 +176,7 @@ See [docs/YOLO_TRAINING.md](YOLO_TRAINING.md) for complete training guide.
 - **Toggle Controls**: Show/hide bounding boxes, adjust detection confidence threshold
 
 **How It Works**:
+
 - Backend streams camera frames via WebSocket at ~5-10 FPS
 - Each frame is processed through YOLO
 - Detection results (bounding boxes, labels) sent to frontend
@@ -168,10 +189,12 @@ See [docs/YOLO_TRAINING.md](YOLO_TRAINING.md) for complete training guide.
 
 ---
 
-### Phase 5: Timeline Visualization
+### Component 7: Timeline Visualization
+
 **Goal**: Interactive timeline showing animal activity
 
 **Deliverables**:
+
 - Timeline chart showing animal presence over time
 - Filter by animal type
 - Time range selector (last hour, 6 hours, 24 hours)
@@ -185,10 +208,12 @@ See [docs/YOLO_TRAINING.md](YOLO_TRAINING.md) for complete training guide.
 
 ---
 
-### Phase 6: Polish & Optimization
+### Component 8: Polish & Optimization
+
 **Goal**: Production-ready system
 
 **Deliverables**:
+
 - Systemd service for auto-start on boot
 - Configuration file for camera settings, detection thresholds
 - Logging to file with rotation
@@ -215,7 +240,7 @@ sudo apt-get install -y python3-pip python3-venv libcamera-dev python3-opencv
 python3 -m venv venv
 source venv/bin/activate
 
-# Python packages (will install in each phase)
+# Python packages (install as needed)
 pip install picamera2 opencv-python ultralytics fastapi uvicorn sqlalchemy
 
 # Node.js (for frontend)
@@ -223,7 +248,7 @@ curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
 sudo apt-get install -y nodejs
 ```
 
-## Database Schema (Phase 3)
+## Database Schema
 
 ```sql
 CREATE TABLE detections (
@@ -259,6 +284,7 @@ CREATE INDEX idx_detected_objects_class ON detected_objects(class_name);
 - **Model Size**: YOLOv8n is ~6MB (compared to 90MB+ for larger variants)
 
 ## Future Enhancements (Post-MVP)
+
 - Motion detection to trigger captures (save CPU when yard is empty)
 - Email/push notifications for specific animals
 - Night vision support (IR camera)
@@ -270,6 +296,7 @@ CREATE INDEX idx_detected_objects_class ON detected_objects(class_name);
 - Recording/replay of detection events
 
 ## Project Structure (Final)
+
 ```
 pi-yard-tracker/
 ├── backend/
@@ -296,6 +323,6 @@ pi-yard-tracker/
 
 ---
 
-## Let's Start with Phase 1! 🚀
+## Getting Started 🚀
 
-We'll build incrementally so you can test each phase thoroughly. Phase 1 focuses purely on camera capture and file management - no AI yet. This lets us verify hardware works before adding complexity.
+We'll build incrementally so you can test each component thoroughly. Start with camera capture and file management - no AI yet. This lets us verify hardware works before adding complexity.

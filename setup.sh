@@ -36,7 +36,7 @@ pip install --upgrade pip
 if [ -s requirements.txt ]; then
     pip install -r requirements.txt
 else
-    echo "ℹ️  No additional packages needed for Phase 1"
+    echo "ℹ️  No additional packages needed"
 fi
 
 echo ""
@@ -56,7 +56,7 @@ fi
 echo ""
 echo "✅ Setup complete!"
 echo ""
-echo "To run Phase 1 (Camera Capture):"
+echo "To run the camera capture system:"
 echo "  source venv/bin/activate"
 echo "  python backend/camera_capture.py"
 echo ""

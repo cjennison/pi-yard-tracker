@@ -2,9 +2,9 @@
 
 Wildlife monitoring system for Raspberry Pi with local AI detection and web visualization.
 
-## 🎉 What We've Built So Far
+## 🎉 What We've Built
 
-**Phases 1, 2A, 2B, and 3 are complete!** The system can now:
+**The complete system is ready!** The system can now:
 
 - 📷 Capture photos from Raspberry Pi camera every second
 - 💾 Store full HD images (1920x1080) locally
@@ -18,7 +18,7 @@ Wildlife monitoring system for Raspberry Pi with local AI detection and web visu
 - 🌐 REST API for querying photos, detections, and statistics
 - 📈 Interactive API documentation (Swagger UI)
 
-See [docs/PHASE_2A_SUMMARY.md](docs/PHASE_2A_SUMMARY.md) and [docs/YOLO_EXPLAINED.md](docs/YOLO_EXPLAINED.md) for details.
+See [docs/YOLO_EXPLAINED.md](docs/YOLO_EXPLAINED.md) for technical details.
 
 ## Quick Start
 
@@ -282,19 +282,18 @@ Or edit `backend/camera_capture.py` directly:
 ## Documentation
 
 - [📋 Complete Project Plan](docs/PROJECT_PLAN.md) - Full roadmap and technical stack
-- [✅ Phase 1 Summary](docs/PHASE_1_SUMMARY.md) - What we built and how it works
-- [🎥 Live View Details](docs/LIVE_VIEW.md) - Real-time detection visualization (coming in Phase 4.5)
+- [🎥 Live View Details](docs/LIVE_VIEW.md) - Real-time detection visualization
 
-## Project Status
+## Features
 
-✅ **Phase 1: Camera Capture & Basic Storage** (COMPLETE)
+✅ **Camera Capture & Basic Storage**
 
 - Camera initialization and configuration
 - 1-second interval photo capture
 - Automatic 15-minute retention cleanup
 - Logging and statistics
 
-✅ **Phase 2A: Object Detection - Pre-trained Model** (COMPLETE)
+✅ **Object Detection - Pre-trained Model**
 
 - YOLOv8n integration (~6MB model)
 - Real-time detection on every photo (~300-400ms)
@@ -302,7 +301,7 @@ Or edit `backend/camera_capture.py` directly:
 - Bounding box visualization
 - Detection logging
 
-✅ **Phase 2B: Custom Model Training** (COMPLETE)
+✅ **Custom Model Training**
 
 - Synthetic training data generation using AI (DALL-E 3)
 - Real image fetching from Pexels (FREE)
@@ -312,7 +311,7 @@ Or edit `backend/camera_capture.py` directly:
 - Custom model deployment
 - See [docs/SYNTHETIC_DATA_GENERATION.md](docs/SYNTHETIC_DATA_GENERATION.md)
 
-✅ **Phase 3: Database & REST API** (COMPLETE)
+✅ **Database & REST API**
 
 - SQLite database for photos and detections
 - FastAPI REST API with Swagger UI
@@ -320,15 +319,12 @@ Or edit `backend/camera_capture.py` directly:
 - Session tracking
 - See [backend/database/README.md](backend/database/README.md) and [backend/api/README.md](backend/api/README.md)
 
-⬜ **Phase 4: Web Interface - Basic View** (Next)
+## Planned Features
 
-- Photo gallery view
-- Detection timeline
-- Real-time statistics dashboard
-
-⬜ **Phase 4.5: Live Camera View & Real-Time Detection** 🎥
-⬜ **Phase 5: Timeline Visualization**
-⬜ **Phase 6: Polish & Optimization**
+- 🔜 Web Interface - Photo gallery and detection timeline
+- 🔜 Live Camera View & Real-Time Detection 🎥
+- 🔜 Timeline Visualization
+- 🔜 Enhanced UI Polish & Optimization
 
 ## Hardware Used
 

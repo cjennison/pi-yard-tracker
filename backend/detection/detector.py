@@ -1,4 +1,4 @@
-# Phase 2A: Object Detection with Pre-trained YOLO
+# Object Detection with Pre-trained YOLO
 #
 # This module handles animal/object detection using YOLOv8n pre-trained model.
 #

@@ -7,6 +7,7 @@
 #### ✅ What YOLO Already Knows (COCO Dataset - 80 Classes)
 
 **Animals in COCO:**
+
 - bird
 - cat
 - dog
@@ -19,6 +20,7 @@
 - giraffe
 
 **NOT in COCO (need custom training):**
+
 - ❌ deer / moose / elk
 - ❌ rabbit / squirrel / chipmunk
 - ❌ fox / coyote / wolf
@@ -37,10 +39,12 @@
 
 ## Step-by-Step: Training YOLO for New Hampshire Deer
 
-### Phase 2A: Use Pre-trained Model (Quick Start)
+### Option 1: Use Pre-trained Model (Quick Start)
+
 First, we'll use YOLO's pre-trained model to detect common animals. This works immediately.
 
-### Phase 2B: Custom Training (Advanced)
+### Option 2: Custom Training (Advanced)
+
 Then, we'll train a custom model to recognize specific animals.
 
 ---
@@ -50,8 +54,9 @@ Then, we'll train a custom model to recognize specific animals.
 ### 1. Data Collection (100-500 images minimum)
 
 **Option A: Collect Your Own**
+
 ```python
-# Use Phase 1 to collect images automatically!
+# Use the camera capture system to collect images automatically!
 # Point camera at yard, let it run for a few days
 # Manually review and save images with deer
 
@@ -59,11 +64,13 @@ Then, we'll train a custom model to recognize specific animals.
 ```
 
 **Option B: Use Existing Datasets**
+
 - [Roboflow Universe](https://universe.roboflow.com/) - Pre-labeled datasets
 - [Open Images Dataset](https://storage.googleapis.com/openimages/web/index.html) - Google's dataset
 - [iNaturalist](https://www.inaturalist.org/) - Wildlife observations
 
 **Best Practice: Mix both!**
+
 - 70% existing datasets (for general "deer" knowledge)
 - 30% your yard images (for your specific camera angle/lighting)
 
@@ -72,6 +79,7 @@ Then, we'll train a custom model to recognize specific animals.
 You need to draw boxes around animals and label them. Use one of these tools:
 
 #### Recommended: LabelImg (Free, Easy)
+
 ```bash
 # Install
 pip install labelImg
@@ -88,18 +96,20 @@ labelImg
 ```
 
 #### Alternative: Roboflow (Web-based, Free tier)
+
 - Upload images to roboflow.com
 - Draw boxes in browser
 - Auto-generates train/validation split
 - Exports in YOLO format
 
 **Annotation Format (YOLO):**
+
 ```
 # File: deer_001.txt (one per image)
 # Format: class_id x_center y_center width height (all normalized 0-1)
 0 0.5 0.6 0.3 0.4
 
-# Means: Class 0 (deer), centered at 50% width, 60% height, 
+# Means: Class 0 (deer), centered at 50% width, 60% height,
 #        box is 30% of image width, 40% of image height
 ```
 
@@ -137,8 +147,8 @@ train: images/train
 val: images/val
 
 # Classes
-nc: 3  # number of classes
-names: ['deer', 'turkey', 'rabbit']  # Your custom animals
+nc: 3 # number of classes
+names: ["deer", "turkey", "rabbit"] # Your custom animals
 
 # Optional: Use pre-trained weights as starting point
 # This is called "transfer learning" - much faster!
@@ -154,12 +164,12 @@ import os
 
 def train_custom_model():
     """Train custom YOLO model for New Hampshire wildlife"""
-    
+
     # Load pre-trained YOLOv8n as starting point
     # This is MUCH faster than training from scratch
     # Model already knows what "animal-like" features look like
     model = YOLO('yolov8n.pt')
-    
+
     # Fine-tune on your custom dataset
     results = model.train(
         data='data/deer_dataset.yaml',
@@ -170,12 +180,12 @@ def train_custom_model():
         patience=10,            # Stop if no improvement for 10 epochs
         project='models',
         name='nh_wildlife',
-        
+
         # Transfer learning settings
         pretrained=True,        # Start from pre-trained weights
         freeze=10,              # Freeze first 10 layers (speed up training)
     )
-    
+
     # Model saved to: models/nh_wildlife/weights/best.pt
     print(f"✅ Training complete!")
     print(f"📊 Best model saved to: {results.save_dir}/weights/best.pt")
@@ -187,16 +197,19 @@ if __name__ == "__main__":
 ### 6. Training Performance Expectations
 
 **On Raspberry Pi 5:**
+
 - ⚠️ **Not recommended** for training (too slow)
 - Training 50 epochs on 200 images: ~8-12 hours
 - Better to train on laptop/desktop
 
 **On Laptop/Desktop (with GPU):**
+
 - ✅ **Recommended**
 - NVIDIA GPU: ~30-60 minutes for 50 epochs
 - CPU only: ~2-4 hours
 
 **Best Approach:**
+
 1. Train on your laptop/desktop
 2. Copy trained model file (`best.pt`) to Raspberry Pi
 3. Pi only does **inference** (running the model), not training
@@ -229,6 +242,7 @@ for result in results:
 ### Why Training is Fast(er)
 
 **Training from Scratch:**
+
 ```
 Start: Model knows NOTHING
 ↓
@@ -238,6 +252,7 @@ Result: 100+ hours of training needed
 ```
 
 **Transfer Learning (What we do):**
+
 ```
 Start: Model already knows animals, shapes, textures from COCO
 ↓
@@ -247,6 +262,7 @@ Result: 1-2 hours of training needed
 ```
 
 **Analogy:**
+
 - From scratch = Teaching someone who's never seen an animal to recognize deer
 - Transfer learning = Teaching a dog expert to recognize deer (they already know "animal")
 
@@ -271,20 +287,26 @@ YOLOv8 Architecture:
 ## Practical Recommendations
 
 ### Scenario 1: "I just want to track any animals"
-**Solution:** Use pre-trained YOLOv8n (Phase 2A)
+
+**Solution:** Use pre-trained YOLOv8n
+
 - Detects: dogs, cats, birds, people, bears, horses
 - No training needed
 - Works immediately
 
 ### Scenario 2: "I want to track deer specifically"
-**Solution:** Custom training (Phase 2B)
+
+**Solution:** Custom training
+
 1. Collect 100-300 deer images (Roboflow + your yard)
 2. Annotate with LabelImg (~2-4 hours)
 3. Train on laptop (1-2 hours)
 4. Deploy to Pi
 
 ### Scenario 3: "I want to distinguish species"
+
 **Solution:** Advanced custom training
+
 - Classes: `white-tailed-deer`, `moose`, `black-bear`, `coyote`
 - Need 200-500 images per class
 - More epochs (100-200)
@@ -303,28 +325,31 @@ for epoch in range(50):
     for image, label in training_data:
         # 1. Model makes a prediction
         prediction = model(image)  # "I see a deer at (100, 200)"
-        
+
         # 2. Compare to correct answer
         error = prediction - actual_label  # "Off by 10 pixels!"
-        
+
         # 3. Adjust model weights to reduce error
         model.weights -= learning_rate * error.gradient
-        
+
         # Over time, predictions get closer to correct answers
 ```
 
 ### What Makes a Good Dataset
 
 **Quality > Quantity:**
+
 - ✅ 200 diverse, well-labeled images > 1000 similar, poorly-labeled images
 
 **Diversity matters:**
+
 - Different times of day (morning, afternoon, evening)
 - Different weather (sunny, cloudy, rain)
 - Different angles (front, side, far, close)
 - Different poses (standing, walking, eating)
 
 **Common mistakes:**
+
 - ❌ All images from same camera angle
 - ❌ All images at same time of day
 - ❌ Boxes too tight or too loose
@@ -334,12 +359,14 @@ for epoch in range(50):
 
 ## Cost & Time Estimates
 
-### Pre-trained Model (Phase 2A)
+### Pre-trained Model
+
 - **Cost:** $0 (model is free)
 - **Time:** 15 minutes to download and test
 - **Accuracy:** Good for common animals (80-95%)
 
-### Custom Training (Phase 2B)
+### Custom Training
+
 - **Cost:** $0 (all tools are free)
 - **Time Breakdown:**
   - Image collection: 2-10 hours (mostly waiting)
@@ -350,22 +377,25 @@ for epoch in range(50):
 - **Accuracy:** Excellent for your specific animals (90-98%)
 
 ### Ongoing Improvement
+
 - Collect more images over time
 - Re-train monthly with new data
 - Model gets better as dataset grows
 
 ---
 
-## Next Steps in Phase 2
+## Implementation Approaches
 
 We'll implement BOTH approaches:
 
-### Phase 2A: Quick Win
+### Approach 1: Quick Win
+
 1. Install YOLOv8n pre-trained
 2. Detect animals immediately
 3. See what works out-of-the-box
 
-### Phase 2B: Custom Training
+### Approach 2: Custom Training
+
 1. Create annotation tools integration
 2. Build training script
 3. Instructions for training on laptop
@@ -378,24 +408,28 @@ This gives you a working system NOW, with path to improvement LATER!
 ## Tools & Resources
 
 ### Annotation Tools
+
 - **LabelImg**: https://github.com/heartexlabs/labelImg
 - **Roboflow**: https://roboflow.com/ (web-based)
 - **CVAT**: https://cvat.ai/ (advanced, team collaboration)
 
 ### Datasets
+
 - **Roboflow Universe**: https://universe.roboflow.com/
 - **Open Images**: https://storage.googleapis.com/openimages/web/index.html
 - **iNaturalist**: https://www.inaturalist.org/
 
 ### Training Resources
+
 - **Ultralytics Docs**: https://docs.ultralytics.com/modes/train/
 - **YOLOv8 Tutorial**: https://docs.ultralytics.com/quickstart/
 
 ### Hardware Recommendations
+
 - **For Training**: Desktop/Laptop with NVIDIA GPU (GTX 1060 or better)
 - **For Inference**: Raspberry Pi 4/5 (CPU is fine)
 - **Cloud Option**: Google Colab (free GPU access)
 
 ---
 
-**Ready to start Phase 2A with pre-trained model, then add custom training capability?**
+**Ready to start with pre-trained model, then add custom training capability?**
