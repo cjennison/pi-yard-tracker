@@ -39,6 +39,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { usePhotos, usePhoto } from "../../api/hooks";
 import dayjs from "dayjs";
+import ImageWithDetections from "../../components/ImageWithDetections/ImageWithDetections";
 
 export default function Photos() {
   const [page, setPage] = useState(1);
@@ -382,16 +383,13 @@ export default function Photos() {
           </Center>
         ) : selectedPhoto ? (
           <Stack gap="md">
-            {/* Image */}
-            <Box pos="relative">
-              <Image
-                src={getImageUrl(selectedPhoto.filepath)}
-                alt={selectedPhoto.filename}
-                fit="contain"
-                mah={500}
-                fallbackSrc="/placeholder-image.png"
-              />
-            </Box>
+            {/* Image with Bounding Boxes */}
+            <ImageWithDetections
+              src={getImageUrl(selectedPhoto.filepath)}
+              detections={selectedPhoto.detections}
+              maxHeight={600}
+              showLabels={true}
+            />
 
             {/* Photo Info */}
             <Paper p="md" withBorder>

@@ -84,6 +84,12 @@ class Detection:
     
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization"""
+        # Calculate all bbox coordinates for frontend
+        x_min = max(0.0, self.bbox_x - self.bbox_width / 2)
+        y_min = max(0.0, self.bbox_y - self.bbox_height / 2)
+        x_max = min(1.0, self.bbox_x + self.bbox_width / 2)
+        y_max = min(1.0, self.bbox_y + self.bbox_height / 2)
+        
         return {
             "id": self.id,
             "photo_id": self.photo_id,
@@ -93,7 +99,14 @@ class Detection:
                 "x": self.bbox_x,
                 "y": self.bbox_y,
                 "width": self.bbox_width,
-                "height": self.bbox_height
+                "height": self.bbox_height,
+                # Add derived coordinates for frontend
+                "x_center": self.bbox_x,
+                "y_center": self.bbox_y,
+                "x_min": x_min,
+                "y_min": y_min,
+                "x_max": x_max,
+                "y_max": y_max
             },
             "model_name": self.model_name,
             "created_at": self.created_at.isoformat()

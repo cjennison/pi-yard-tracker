@@ -159,7 +159,7 @@ class Database:
                 GROUP BY class_name 
                 ORDER BY count DESC
             """)
-            classes = [{"class": row[0], "count": row[1]} for row in cursor.fetchall()]
+            classes = [{"class_name": row[0], "count": row[1]} for row in cursor.fetchall()]
             
             # Calculate average detections per photo
             avg_detections_per_photo = (
@@ -170,7 +170,7 @@ class Database:
             unique_classes = len(classes)
             
             # Get most detected class
-            most_detected_class = classes[0]["class"] if classes else None
+            most_detected_class = classes[0]["class_name"] if classes else None
             
             # Get latest and oldest photo timestamps
             cursor.execute("SELECT MAX(captured_at) FROM photos")

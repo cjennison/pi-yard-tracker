@@ -19,7 +19,6 @@ import {
   Center,
   Loader,
   Tooltip,
-  Image,
   Grid,
   RangeSlider,
   Box,
@@ -39,6 +38,7 @@ import {
 import { useDisclosure } from "@mantine/hooks";
 import { useDetections, useDetectionClasses, usePhoto } from "../../api/hooks";
 import dayjs from "dayjs";
+import ImageWithDetections from "../../components/ImageWithDetections/ImageWithDetections";
 
 export default function Detections() {
   const [page, setPage] = useState(1);
@@ -528,61 +528,13 @@ export default function Detections() {
           </Center>
         ) : selectedPhoto ? (
           <Stack gap="md">
-            {/* Photo with Detection Overlay */}
-            <Box pos="relative">
-              <Image
-                src={getImageUrl(selectedPhoto.filepath)}
-                alt={selectedPhoto.filename}
-                fit="contain"
-                mah={400}
-                fallbackSrc="/placeholder-image.png"
-                onLoad={(e) => {
-                  // Draw bounding boxes on the image
-                  const canvas = document.createElement("canvas");
-                  const ctx = canvas.getContext("2d");
-                  const img = e.currentTarget as HTMLImageElement;
-
-                  if (ctx && selectedDetectionId) {
-                    const detection = selectedPhoto.detections.find(
-                      (d) => d.id === selectedDetectionId
-                    );
-                    if (detection) {
-                      canvas.width = img.naturalWidth;
-                      canvas.height = img.naturalHeight;
-
-                      // Draw the image
-                      ctx.drawImage(img, 0, 0);
-
-                      // Draw bounding box
-                      const bbox = detection.bbox;
-                      const x = bbox.x_min * canvas.width;
-                      const y = bbox.y_min * canvas.height;
-                      const width = bbox.width * canvas.width;
-                      const height = bbox.height * canvas.height;
-
-                      ctx.strokeStyle = "#00d4aa";
-                      ctx.lineWidth = 3;
-                      ctx.strokeRect(x, y, width, height);
-
-                      // Draw label
-                      ctx.fillStyle = "#00d4aa";
-                      ctx.fillRect(
-                        x,
-                        y - 25,
-                        ctx.measureText(detection.class_name).width + 10,
-                        25
-                      );
-                      ctx.fillStyle = "white";
-                      ctx.font = "16px Arial";
-                      ctx.fillText(detection.class_name, x + 5, y - 5);
-
-                      // Replace image with canvas
-                      img.src = canvas.toDataURL();
-                    }
-                  }
-                }}
-              />
-            </Box>
+            {/* Photo with Detection Bounding Boxes */}
+            <ImageWithDetections
+              src={getImageUrl(selectedPhoto.filepath)}
+              detections={selectedPhoto.detections}
+              maxHeight={500}
+              showLabels={true}
+            />
 
             {/* Detection Information */}
             {selectedDetectionId && (

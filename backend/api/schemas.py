@@ -11,10 +11,19 @@ from typing import Optional, List
 
 class BoundingBox(BaseModel):
     """Bounding box coordinates (normalized 0-1)"""
+    # YOLO format (center coordinates)
     x: float = Field(..., ge=0.0, le=1.0, description="Center x coordinate")
     y: float = Field(..., ge=0.0, le=1.0, description="Center y coordinate")
     width: float = Field(..., ge=0.0, le=1.0, description="Box width")
     height: float = Field(..., ge=0.0, le=1.0, description="Box height")
+    
+    # Derived coordinates for frontend (optional, calculated by backend)
+    x_center: Optional[float] = None
+    y_center: Optional[float] = None
+    x_min: Optional[float] = None
+    y_min: Optional[float] = None
+    x_max: Optional[float] = None
+    y_max: Optional[float] = None
 
 
 class DetectionResponse(BaseModel):
@@ -131,9 +140,9 @@ class StatsResponse(BaseModel):
                 "photos_with_detections": 45,
                 "total_detections": 67,
                 "detection_classes": [
-                    {"class": "coffee_mug", "count": 35},
-                    {"class": "person", "count": 20},
-                    {"class": "cat", "count": 12}
+                    {"class_name": "coffee_mug", "count": 35},
+                    {"class_name": "person", "count": 20},
+                    {"class_name": "cat", "count": 12}
                 ],
                 "avg_detections_per_photo": 0.45,
                 "unique_classes": 3,
