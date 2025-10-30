@@ -1,20 +1,20 @@
-import { useQuery } from '@tanstack/react-query';
-import type { UseQueryOptions } from '@tanstack/react-query';
-import apiClient from './client';
+import { useQuery } from "@tanstack/react-query";
+import type { UseQueryOptions } from "@tanstack/react-query";
+import apiClient from "./client";
 import type {
   Stats,
   Photo,
   DetectionClass,
   DetectionSession,
   Detection,
-} from './types';
+} from "./types";
 
 // Stats API
 export const useStats = (options?: UseQueryOptions<Stats>) => {
   return useQuery<Stats>({
-    queryKey: ['stats'],
+    queryKey: ["stats"],
     queryFn: async () => {
-      const { data } = await apiClient.get<Stats>('/stats');
+      const { data } = await apiClient.get<Stats>("/stats");
       return data;
     },
     refetchInterval: 5000, // Auto-refresh every 5 seconds
@@ -30,13 +30,25 @@ export const usePhotos = (
     has_detections?: boolean;
     min_detections?: number;
   },
-  options?: UseQueryOptions<{ photos: Photo[]; total: number; page: number; page_size: number }>
+  options?: UseQueryOptions<{
+    photos: Photo[];
+    total: number;
+    page: number;
+    page_size: number;
+  }>
 ) => {
-  return useQuery<{ photos: Photo[]; total: number; page: number; page_size: number }>({
-    queryKey: ['photos', params],
+  return useQuery<{
+    photos: Photo[];
+    total: number;
+    page: number;
+    page_size: number;
+  }>({
+    queryKey: ["photos", params],
     queryFn: async () => {
-      const offset = params?.page ? (params.page - 1) * (params.limit || 20) : 0;
-      const { data } = await apiClient.get<Photo[]>('/photos/', {
+      const offset = params?.page
+        ? (params.page - 1) * (params.limit || 20)
+        : 0;
+      const { data } = await apiClient.get<Photo[]>("/photos/", {
         params: {
           offset,
           limit: params?.limit || 20,
@@ -44,7 +56,7 @@ export const usePhotos = (
           min_detections: params?.min_detections,
         },
       });
-      
+
       // Transform the response to match expected format
       return {
         photos: data,
@@ -63,9 +75,9 @@ export const usePhoto = (
   options?: UseQueryOptions<Photo>
 ) => {
   return useQuery<Photo>({
-    queryKey: ['photo', photoId],
+    queryKey: ["photo", photoId],
     queryFn: async () => {
-      if (!photoId) throw new Error('Photo ID is required');
+      if (!photoId) throw new Error("Photo ID is required");
       const { data } = await apiClient.get<Photo>(`/photos/${photoId}`);
       return data;
     },
@@ -83,13 +95,25 @@ export const useDetections = (
     min_confidence?: number;
     max_confidence?: number;
   },
-  options?: UseQueryOptions<{ detections: Detection[]; total: number; page: number; page_size: number }>
+  options?: UseQueryOptions<{
+    detections: Detection[];
+    total: number;
+    page: number;
+    page_size: number;
+  }>
 ) => {
-  return useQuery<{ detections: Detection[]; total: number; page: number; page_size: number }>({
-    queryKey: ['detections', params],
+  return useQuery<{
+    detections: Detection[];
+    total: number;
+    page: number;
+    page_size: number;
+  }>({
+    queryKey: ["detections", params],
     queryFn: async () => {
-      const offset = params?.page ? (params.page - 1) * (params.limit || 20) : 0;
-      const { data } = await apiClient.get<Detection[]>('/detections/', {
+      const offset = params?.page
+        ? (params.page - 1) * (params.limit || 20)
+        : 0;
+      const { data } = await apiClient.get<Detection[]>("/detections/", {
         params: {
           offset,
           limit: params?.limit || 20,
@@ -98,7 +122,7 @@ export const useDetections = (
           max_confidence: params?.max_confidence,
         },
       });
-      
+
       // Transform the response to match expected format
       return {
         detections: data,
@@ -116,9 +140,11 @@ export const useDetectionClasses = (
   options?: UseQueryOptions<DetectionClass[]>
 ) => {
   return useQuery<DetectionClass[]>({
-    queryKey: ['detection-classes'],
+    queryKey: ["detection-classes"],
     queryFn: async () => {
-      const { data } = await apiClient.get<DetectionClass[]>('/detections/classes');
+      const { data } = await apiClient.get<DetectionClass[]>(
+        "/detections/classes"
+      );
       return data;
     },
     refetchInterval: 10000, // Auto-refresh every 10 seconds
@@ -136,9 +162,9 @@ export const useSessions = (
   options?: UseQueryOptions<DetectionSession[]>
 ) => {
   return useQuery<DetectionSession[]>({
-    queryKey: ['sessions', params],
+    queryKey: ["sessions", params],
     queryFn: async () => {
-      const { data } = await apiClient.get<DetectionSession[]>('/sessions', {
+      const { data } = await apiClient.get<DetectionSession[]>("/sessions", {
         params: {
           offset: params?.page ? (params.page - 1) * (params.limit || 20) : 0,
           limit: params?.limit || 20,

@@ -29,7 +29,8 @@ html {
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     opacity: 1;
   }
@@ -79,17 +80,26 @@ html {
 }
 
 ::-webkit-scrollbar-track {
-  background: light-dark(var(--mantine-color-gray-1), var(--mantine-color-dark-6));
+  background: light-dark(
+    var(--mantine-color-gray-1),
+    var(--mantine-color-dark-6)
+  );
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: light-dark(var(--mantine-color-gray-4), var(--mantine-color-dark-4));
+  background: light-dark(
+    var(--mantine-color-gray-4),
+    var(--mantine-color-dark-4)
+  );
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: light-dark(var(--mantine-color-gray-5), var(--mantine-color-dark-3));
+  background: light-dark(
+    var(--mantine-color-gray-5),
+    var(--mantine-color-dark-3)
+  );
 }
 
 /* Animation classes for page transitions */
@@ -128,7 +138,10 @@ html {
 }
 
 .enhanced-table tbody tr:hover {
-  background-color: light-dark(var(--mantine-color-blue-0), var(--mantine-color-dark-6));
+  background-color: light-dark(
+    var(--mantine-color-blue-0),
+    var(--mantine-color-dark-6)
+  );
   transform: scale(1.01);
 }
 
@@ -139,7 +152,7 @@ html {
 }
 
 .progress-bar::after {
-  content: '';
+  content: "";
   position: absolute;
   top: 0;
   left: 0;
@@ -179,7 +192,7 @@ img {
   .no-print {
     display: none !important;
   }
-  
+
   body {
     font-size: 12pt;
     line-height: 1.4;

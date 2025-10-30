@@ -1,6 +1,14 @@
-import React from 'react';
-import { Alert, Button, Stack, Text, Title, Center, Container } from '@mantine/core';
-import { IconAlertTriangle, IconRefresh } from '@tabler/icons-react';
+import React from "react";
+import {
+  Alert,
+  Button,
+  Stack,
+  Text,
+  Title,
+  Center,
+  Container,
+} from "@mantine/core";
+import { IconAlertTriangle, IconRefresh } from "@tabler/icons-react";
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -13,7 +21,10 @@ interface ErrorBoundaryProps {
   fallback?: React.ComponentType<{ error: Error; retry: () => void }>;
 }
 
-export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+export class ErrorBoundary extends React.Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
@@ -27,7 +38,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('ErrorBoundary caught an error:', error, errorInfo);
+    console.error("ErrorBoundary caught an error:", error, errorInfo);
     this.setState({
       error,
       errorInfo,
@@ -42,7 +53,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
     if (this.state.hasError) {
       if (this.props.fallback) {
         const FallbackComponent = this.props.fallback;
-        return <FallbackComponent error={this.state.error!} retry={this.handleRetry} />;
+        return (
+          <FallbackComponent
+            error={this.state.error!}
+            retry={this.handleRetry}
+          />
+        );
       }
 
       return (
@@ -50,11 +66,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           <Center>
             <Stack align="center" gap="lg">
               <IconAlertTriangle size={64} color="var(--mantine-color-red-6)" />
-              
+
               <Stack align="center" gap="sm">
-                <Title order={2} ta="center">Something went wrong</Title>
+                <Title order={2} ta="center">
+                  Something went wrong
+                </Title>
                 <Text c="dimmed" ta="center" size="sm">
-                  An unexpected error occurred in the application. This might be a temporary issue.
+                  An unexpected error occurred in the application. This might be
+                  a temporary issue.
                 </Text>
               </Stack>
 
@@ -66,18 +85,18 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 maw={600}
               >
                 <Text size="sm" c="red.7">
-                  {this.state.error?.message || 'Unknown error occurred'}
+                  {this.state.error?.message || "Unknown error occurred"}
                 </Text>
-                
+
                 {import.meta.env.DEV && this.state.error?.stack && (
                   <Text
                     size="xs"
                     c="red.6"
                     mt="sm"
                     style={{
-                      fontFamily: 'monospace',
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-all',
+                      fontFamily: "monospace",
+                      whiteSpace: "pre-wrap",
+                      wordBreak: "break-all",
                     }}
                   >
                     {this.state.error.stack}
@@ -93,7 +112,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 >
                   Try Again
                 </Button>
-                
+
                 <Button
                   onClick={() => window.location.reload()}
                   variant="light"
@@ -104,7 +123,8 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               </Stack>
 
               <Text size="xs" c="dimmed" ta="center">
-                If this problem persists, please check the console for more details or contact support.
+                If this problem persists, please check the console for more
+                details or contact support.
               </Text>
             </Stack>
           </Center>
@@ -117,7 +137,13 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 }
 
 // Simple error fallback component
-export function SimpleErrorFallback({ error, retry }: { error: Error; retry: () => void }) {
+export function SimpleErrorFallback({
+  error,
+  retry,
+}: {
+  error: Error;
+  retry: () => void;
+}) {
   return (
     <Alert
       icon={<IconAlertTriangle size={16} />}
@@ -128,7 +154,12 @@ export function SimpleErrorFallback({ error, retry }: { error: Error; retry: () 
     >
       <Stack gap="sm">
         <Text size="sm">{error.message}</Text>
-        <Button size="xs" variant="light" onClick={retry} leftSection={<IconRefresh size={14} />}>
+        <Button
+          size="xs"
+          variant="light"
+          onClick={retry}
+          leftSection={<IconRefresh size={14} />}
+        >
           Retry
         </Button>
       </Stack>

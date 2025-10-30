@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Stack,
   Title,
@@ -24,7 +24,7 @@ import {
   RangeSlider,
   Box,
   ScrollArea,
-} from '@mantine/core';
+} from "@mantine/core";
 import {
   IconSearch,
   IconFilter,
@@ -35,21 +35,26 @@ import {
   IconSortAscending,
   IconSortDescending,
   IconTarget,
-} from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
-import { useDetections, useDetectionClasses, usePhoto } from '../../api/hooks';
-import dayjs from 'dayjs';
+} from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
+import { useDetections, useDetectionClasses, usePhoto } from "../../api/hooks";
+import dayjs from "dayjs";
 
 export default function Detections() {
   const [page, setPage] = useState(1);
-  const [classFilter, setClassFilter] = useState<string>('');
-  const [confidenceRange, setConfidenceRange] = useState<[number, number]>([0, 100]);
-  const [sortField, setSortField] = useState<string>('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [search, setSearch] = useState('');
-  const [selectedDetectionId, setSelectedDetectionId] = useState<number | null>(null);
+  const [classFilter, setClassFilter] = useState<string>("");
+  const [confidenceRange, setConfidenceRange] = useState<[number, number]>([
+    0, 100,
+  ]);
+  const [sortField, setSortField] = useState<string>("created_at");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [search, setSearch] = useState("");
+  const [selectedDetectionId, setSelectedDetectionId] = useState<number | null>(
+    null
+  );
   const [selectedPhotoId, setSelectedPhotoId] = useState<number | null>(null);
-  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
+  const [modalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
 
   const PAGE_SIZE = 50;
 
@@ -70,7 +75,8 @@ export default function Detections() {
   const { data: classes } = useDetectionClasses();
 
   // Fetch selected photo details
-  const { data: selectedPhoto, isLoading: photoLoading } = usePhoto(selectedPhotoId);
+  const { data: selectedPhoto, isLoading: photoLoading } =
+    usePhoto(selectedPhotoId);
 
   const handleDetectionClick = (detectionId: number, photoId: number) => {
     setSelectedDetectionId(detectionId);
@@ -85,38 +91,47 @@ export default function Detections() {
   };
 
   const filteredDetections = detectionsData?.detections.filter((detection) => {
-    if (search && !detection.class_name.toLowerCase().includes(search.toLowerCase())) {
+    if (
+      search &&
+      !detection.class_name.toLowerCase().includes(search.toLowerCase())
+    ) {
       return false;
     }
     return true;
   });
 
-  const totalPages = detectionsData ? Math.ceil(detectionsData.total / PAGE_SIZE) : 0;
+  const totalPages = detectionsData
+    ? Math.ceil(detectionsData.total / PAGE_SIZE)
+    : 0;
 
   const getImageUrl = (filepath: string) => {
-    const filename = filepath.split('/').pop();
+    const filename = filepath.split("/").pop();
     return `http://localhost:8000/photos/image/${filename}`;
   };
 
   const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.8) return 'green';
-    if (confidence >= 0.6) return 'yellow';
-    if (confidence >= 0.4) return 'orange';
-    return 'red';
+    if (confidence >= 0.8) return "green";
+    if (confidence >= 0.6) return "yellow";
+    if (confidence >= 0.4) return "orange";
+    return "red";
   };
 
   const handleSort = (field: string) => {
     if (sortField === field) {
-      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
     } else {
       setSortField(field);
-      setSortOrder('desc');
+      setSortOrder("desc");
     }
   };
 
   if (detectionsError) {
     return (
-      <Alert icon={<IconInfoCircle size={16} />} title="Connection Error" color="red">
+      <Alert
+        icon={<IconInfoCircle size={16} />}
+        title="Connection Error"
+        color="red"
+      >
         Unable to load detections. Please ensure the backend server is running.
       </Alert>
     );
@@ -126,7 +141,9 @@ export default function Detections() {
     <Stack gap="lg">
       {/* Header */}
       <div>
-        <Title order={1} size="h2">Detection Records</Title>
+        <Title order={1} size="h2">
+          Detection Records
+        </Title>
         <Text c="dimmed" size="sm" mt={4}>
           Detailed view of all object detections with filtering and analysis
         </Text>
@@ -136,17 +153,19 @@ export default function Detections() {
       <Card shadow="sm" padding="lg" radius="md" withBorder>
         <Stack gap="md">
           <Group justify="space-between">
-            <Text fw={600} size="sm">Advanced Filters</Text>
+            <Text fw={600} size="sm">
+              Advanced Filters
+            </Text>
             <Button
               variant="light"
               size="xs"
               leftSection={<IconX size={14} />}
               onClick={() => {
-                setSearch('');
-                setClassFilter('');
+                setSearch("");
+                setClassFilter("");
                 setConfidenceRange([0, 100]);
-                setSortField('created_at');
-                setSortOrder('desc');
+                setSortField("created_at");
+                setSortOrder("desc");
                 setPage(1);
               }}
             >
@@ -168,14 +187,14 @@ export default function Detections() {
               <Select
                 placeholder="Filter by class"
                 data={[
-                  { value: '', label: 'All Classes' },
+                  { value: "", label: "All Classes" },
                   ...(classes?.map((cls) => ({
                     value: cls.class_name,
-                    label: `${cls.class_name} (${cls.count})`
-                  })) || [])
+                    label: `${cls.class_name} (${cls.count})`,
+                  })) || []),
                 ]}
                 value={classFilter}
-                onChange={(value) => setClassFilter(value || '')}
+                onChange={(value) => setClassFilter(value || "")}
                 searchable
                 clearable
               />
@@ -185,19 +204,21 @@ export default function Detections() {
               <Select
                 placeholder="Sort by"
                 data={[
-                  { value: 'created_at', label: 'Date' },
-                  { value: 'confidence', label: 'Confidence' },
-                  { value: 'class_name', label: 'Class Name' },
-                  { value: 'photo_id', label: 'Photo ID' },
+                  { value: "created_at", label: "Date" },
+                  { value: "confidence", label: "Confidence" },
+                  { value: "class_name", label: "Class Name" },
+                  { value: "photo_id", label: "Photo ID" },
                 ]}
                 value={sortField}
-                onChange={(value) => setSortField(value || 'created_at')}
+                onChange={(value) => setSortField(value || "created_at")}
               />
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
               <Stack gap="xs">
-                <Text size="sm" fw={500}>Confidence Range</Text>
+                <Text size="sm" fw={500}>
+                  Confidence Range
+                </Text>
                 <RangeSlider
                   value={confidenceRange}
                   onChange={setConfidenceRange}
@@ -205,11 +226,11 @@ export default function Detections() {
                   max={100}
                   step={5}
                   marks={[
-                    { value: 0, label: '0%' },
-                    { value: 25, label: '25%' },
-                    { value: 50, label: '50%' },
-                    { value: 75, label: '75%' },
-                    { value: 100, label: '100%' },
+                    { value: 0, label: "0%" },
+                    { value: 25, label: "25%" },
+                    { value: 50, label: "50%" },
+                    { value: 75, label: "75%" },
+                    { value: 100, label: "100%" },
                   ]}
                 />
                 <Text size="xs" c="dimmed" ta="center">
@@ -228,28 +249,38 @@ export default function Detections() {
             <Group gap="xs">
               <IconTarget size={18} color="var(--mantine-color-green-6)" />
               <Text size="sm">
-                <Text span fw={600}>{detectionsData.total.toLocaleString()}</Text> total detections
+                <Text span fw={600}>
+                  {detectionsData.total.toLocaleString()}
+                </Text>{" "}
+                total detections
               </Text>
             </Group>
           </Paper>
-          
-          {filteredDetections && filteredDetections.length !== detectionsData.detections.length && (
-            <Paper p="sm" withBorder>
-              <Group gap="xs">
-                <IconFilter size={18} color="var(--mantine-color-orange-6)" />
-                <Text size="sm">
-                  <Text span fw={600}>{filteredDetections.length}</Text> filtered results
-                </Text>
-              </Group>
-            </Paper>
-          )}
+
+          {filteredDetections &&
+            filteredDetections.length !== detectionsData.detections.length && (
+              <Paper p="sm" withBorder>
+                <Group gap="xs">
+                  <IconFilter size={18} color="var(--mantine-color-orange-6)" />
+                  <Text size="sm">
+                    <Text span fw={600}>
+                      {filteredDetections.length}
+                    </Text>{" "}
+                    filtered results
+                  </Text>
+                </Group>
+              </Paper>
+            )}
 
           {classes && (
             <Paper p="sm" withBorder>
               <Group gap="xs">
                 <IconEye size={18} color="var(--mantine-color-blue-6)" />
                 <Text size="sm">
-                  <Text span fw={600}>{classes.length}</Text> unique classes
+                  <Text span fw={600}>
+                    {classes.length}
+                  </Text>{" "}
+                  unique classes
                 </Text>
               </Group>
             </Paper>
@@ -287,11 +318,15 @@ export default function Detections() {
                         variant="transparent"
                         size="xs"
                         rightSection={
-                          sortField === 'class_name' ? (
-                            sortOrder === 'asc' ? <IconSortAscending size={14} /> : <IconSortDescending size={14} />
+                          sortField === "class_name" ? (
+                            sortOrder === "asc" ? (
+                              <IconSortAscending size={14} />
+                            ) : (
+                              <IconSortDescending size={14} />
+                            )
                           ) : null
                         }
-                        onClick={() => handleSort('class_name')}
+                        onClick={() => handleSort("class_name")}
                       >
                         Class
                       </Button>
@@ -301,11 +336,15 @@ export default function Detections() {
                         variant="transparent"
                         size="xs"
                         rightSection={
-                          sortField === 'confidence' ? (
-                            sortOrder === 'asc' ? <IconSortAscending size={14} /> : <IconSortDescending size={14} />
+                          sortField === "confidence" ? (
+                            sortOrder === "asc" ? (
+                              <IconSortAscending size={14} />
+                            ) : (
+                              <IconSortDescending size={14} />
+                            )
                           ) : null
                         }
-                        onClick={() => handleSort('confidence')}
+                        onClick={() => handleSort("confidence")}
                       >
                         Confidence
                       </Button>
@@ -316,11 +355,15 @@ export default function Detections() {
                         variant="transparent"
                         size="xs"
                         rightSection={
-                          sortField === 'photo_id' ? (
-                            sortOrder === 'asc' ? <IconSortAscending size={14} /> : <IconSortDescending size={14} />
+                          sortField === "photo_id" ? (
+                            sortOrder === "asc" ? (
+                              <IconSortAscending size={14} />
+                            ) : (
+                              <IconSortDescending size={14} />
+                            )
                           ) : null
                         }
-                        onClick={() => handleSort('photo_id')}
+                        onClick={() => handleSort("photo_id")}
                       >
                         Photo
                       </Button>
@@ -330,11 +373,15 @@ export default function Detections() {
                         variant="transparent"
                         size="xs"
                         rightSection={
-                          sortField === 'created_at' ? (
-                            sortOrder === 'asc' ? <IconSortAscending size={14} /> : <IconSortDescending size={14} />
+                          sortField === "created_at" ? (
+                            sortOrder === "asc" ? (
+                              <IconSortAscending size={14} />
+                            ) : (
+                              <IconSortDescending size={14} />
+                            )
                           ) : null
                         }
-                        onClick={() => handleSort('created_at')}
+                        onClick={() => handleSort("created_at")}
                       >
                         Detected At
                       </Button>
@@ -365,17 +412,19 @@ export default function Detections() {
                             style={{
                               width: 60,
                               height: 8,
-                              backgroundColor: 'var(--mantine-color-gray-2)',
+                              backgroundColor: "var(--mantine-color-gray-2)",
                               borderRadius: 4,
-                              overflow: 'hidden'
+                              overflow: "hidden",
                             }}
                           >
                             <div
                               style={{
                                 width: `${detection.confidence * 100}%`,
-                                height: '100%',
-                                backgroundColor: `var(--mantine-color-${getConfidenceColor(detection.confidence)}-6)`,
-                                transition: 'width 0.3s ease'
+                                height: "100%",
+                                backgroundColor: `var(--mantine-color-${getConfidenceColor(
+                                  detection.confidence
+                                )}-6)`,
+                                transition: "width 0.3s ease",
                               }}
                             />
                           </div>
@@ -383,9 +432,11 @@ export default function Detections() {
                       </Table.Td>
                       <Table.Td>
                         <Text size="xs" c="dimmed">
-                          {Math.round(detection.bbox.width * 100)}% × {Math.round(detection.bbox.height * 100)}%
+                          {Math.round(detection.bbox.width * 100)}% ×{" "}
+                          {Math.round(detection.bbox.height * 100)}%
                           <br />
-                          @({Math.round(detection.bbox.x_center * 100)}, {Math.round(detection.bbox.y_center * 100)})
+                          @({Math.round(detection.bbox.x_center * 100)},{" "}
+                          {Math.round(detection.bbox.y_center * 100)})
                         </Text>
                       </Table.Td>
                       <Table.Td>
@@ -397,7 +448,7 @@ export default function Detections() {
                       </Table.Td>
                       <Table.Td>
                         <Text size="sm">
-                          {dayjs(detection.created_at).format('MMM D, HH:mm')}
+                          {dayjs(detection.created_at).format("MMM D, HH:mm")}
                         </Text>
                         <Text size="xs" c="dimmed">
                           {dayjs(detection.created_at).fromNow()}
@@ -410,7 +461,12 @@ export default function Detections() {
                               size="sm"
                               variant="light"
                               color="blue"
-                              onClick={() => handleDetectionClick(detection.id, detection.photo_id)}
+                              onClick={() =>
+                                handleDetectionClick(
+                                  detection.id,
+                                  detection.photo_id
+                                )
+                              }
                             >
                               <IconZoomIn size={14} />
                             </ActionIcon>
@@ -446,9 +502,12 @@ export default function Detections() {
                 No detections found
               </Text>
               <Text size="sm" c="dimmed" ta="center">
-                {search || classFilter || confidenceRange[0] > 0 || confidenceRange[1] < 100
-                  ? 'Try adjusting your filters to see more results'
-                  : 'Detections will appear here once objects are detected in photos'}
+                {search ||
+                classFilter ||
+                confidenceRange[0] > 0 ||
+                confidenceRange[1] < 100
+                  ? "Try adjusting your filters to see more results"
+                  : "Detections will appear here once objects are detected in photos"}
               </Text>
             </Stack>
           </Stack>
@@ -479,37 +538,44 @@ export default function Detections() {
                 fallbackSrc="/placeholder-image.png"
                 onLoad={(e) => {
                   // Draw bounding boxes on the image
-                  const canvas = document.createElement('canvas');
-                  const ctx = canvas.getContext('2d');
+                  const canvas = document.createElement("canvas");
+                  const ctx = canvas.getContext("2d");
                   const img = e.currentTarget as HTMLImageElement;
-                  
+
                   if (ctx && selectedDetectionId) {
-                    const detection = selectedPhoto.detections.find(d => d.id === selectedDetectionId);
+                    const detection = selectedPhoto.detections.find(
+                      (d) => d.id === selectedDetectionId
+                    );
                     if (detection) {
                       canvas.width = img.naturalWidth;
                       canvas.height = img.naturalHeight;
-                      
+
                       // Draw the image
                       ctx.drawImage(img, 0, 0);
-                      
+
                       // Draw bounding box
                       const bbox = detection.bbox;
                       const x = bbox.x_min * canvas.width;
                       const y = bbox.y_min * canvas.height;
                       const width = bbox.width * canvas.width;
                       const height = bbox.height * canvas.height;
-                      
-                      ctx.strokeStyle = '#00d4aa';
+
+                      ctx.strokeStyle = "#00d4aa";
                       ctx.lineWidth = 3;
                       ctx.strokeRect(x, y, width, height);
-                      
+
                       // Draw label
-                      ctx.fillStyle = '#00d4aa';
-                      ctx.fillRect(x, y - 25, ctx.measureText(detection.class_name).width + 10, 25);
-                      ctx.fillStyle = 'white';
-                      ctx.font = '16px Arial';
+                      ctx.fillStyle = "#00d4aa";
+                      ctx.fillRect(
+                        x,
+                        y - 25,
+                        ctx.measureText(detection.class_name).width + 10,
+                        25
+                      );
+                      ctx.fillStyle = "white";
+                      ctx.font = "16px Arial";
                       ctx.fillText(detection.class_name, x + 5, y - 5);
-                      
+
                       // Replace image with canvas
                       img.src = canvas.toDataURL();
                     }
@@ -522,23 +588,33 @@ export default function Detections() {
             {selectedDetectionId && (
               <>
                 {(() => {
-                  const detection = selectedPhoto.detections.find(d => d.id === selectedDetectionId);
+                  const detection = selectedPhoto.detections.find(
+                    (d) => d.id === selectedDetectionId
+                  );
                   if (!detection) return null;
-                  
+
                   return (
                     <Paper p="md" withBorder>
                       <Grid>
                         <Grid.Col span={6}>
                           <Stack gap="xs">
-                            <Text size="sm" c="dimmed">Class</Text>
-                            <Badge size="lg" variant="light" color={getConfidenceColor(detection.confidence)}>
+                            <Text size="sm" c="dimmed">
+                              Class
+                            </Text>
+                            <Badge
+                              size="lg"
+                              variant="light"
+                              color={getConfidenceColor(detection.confidence)}
+                            >
                               {detection.class_name}
                             </Badge>
                           </Stack>
                         </Grid.Col>
                         <Grid.Col span={6}>
                           <Stack gap="xs">
-                            <Text size="sm" c="dimmed">Confidence</Text>
+                            <Text size="sm" c="dimmed">
+                              Confidence
+                            </Text>
                             <Group gap="xs">
                               <Text size="lg" fw={600}>
                                 {(detection.confidence * 100).toFixed(1)}%
@@ -547,16 +623,19 @@ export default function Detections() {
                                 style={{
                                   width: 100,
                                   height: 12,
-                                  backgroundColor: 'var(--mantine-color-gray-2)',
+                                  backgroundColor:
+                                    "var(--mantine-color-gray-2)",
                                   borderRadius: 6,
-                                  overflow: 'hidden'
+                                  overflow: "hidden",
                                 }}
                               >
                                 <div
                                   style={{
                                     width: `${detection.confidence * 100}%`,
-                                    height: '100%',
-                                    backgroundColor: `var(--mantine-color-${getConfidenceColor(detection.confidence)}-6)`,
+                                    height: "100%",
+                                    backgroundColor: `var(--mantine-color-${getConfidenceColor(
+                                      detection.confidence
+                                    )}-6)`,
                                   }}
                                 />
                               </div>
@@ -565,20 +644,41 @@ export default function Detections() {
                         </Grid.Col>
                         <Grid.Col span={6}>
                           <Stack gap="xs">
-                            <Text size="sm" c="dimmed">Bounding Box</Text>
+                            <Text size="sm" c="dimmed">
+                              Bounding Box
+                            </Text>
                             <Text size="sm" fw={500}>
-                              {Math.round(detection.bbox.width * selectedPhoto.width)} × {Math.round(detection.bbox.height * selectedPhoto.height)} px
+                              {Math.round(
+                                detection.bbox.width * selectedPhoto.width
+                              )}{" "}
+                              ×{" "}
+                              {Math.round(
+                                detection.bbox.height * selectedPhoto.height
+                              )}{" "}
+                              px
                             </Text>
                             <Text size="xs" c="dimmed">
-                              Position: ({Math.round(detection.bbox.x_center * selectedPhoto.width)}, {Math.round(detection.bbox.y_center * selectedPhoto.height)})
+                              Position: (
+                              {Math.round(
+                                detection.bbox.x_center * selectedPhoto.width
+                              )}
+                              ,{" "}
+                              {Math.round(
+                                detection.bbox.y_center * selectedPhoto.height
+                              )}
+                              )
                             </Text>
                           </Stack>
                         </Grid.Col>
                         <Grid.Col span={6}>
                           <Stack gap="xs">
-                            <Text size="sm" c="dimmed">Detected At</Text>
+                            <Text size="sm" c="dimmed">
+                              Detected At
+                            </Text>
                             <Text size="sm" fw={500}>
-                              {dayjs(detection.created_at).format('MMMM D, YYYY at h:mm:ss A')}
+                              {dayjs(detection.created_at).format(
+                                "MMMM D, YYYY at h:mm:ss A"
+                              )}
                             </Text>
                             <Text size="xs" c="dimmed">
                               {dayjs(detection.created_at).fromNow()}
@@ -595,17 +695,25 @@ export default function Detections() {
             {/* Photo Information */}
             <Paper p="md" withBorder>
               <Stack gap="xs">
-                <Text size="sm" fw={600}>Photo Information</Text>
+                <Text size="sm" fw={600}>
+                  Photo Information
+                </Text>
                 <Grid>
                   <Grid.Col span={6}>
                     <Group justify="space-between">
-                      <Text size="sm" c="dimmed">Filename</Text>
-                      <Text size="sm" fw={500}>{selectedPhoto.filename}</Text>
+                      <Text size="sm" c="dimmed">
+                        Filename
+                      </Text>
+                      <Text size="sm" fw={500}>
+                        {selectedPhoto.filename}
+                      </Text>
                     </Group>
                   </Grid.Col>
                   <Grid.Col span={6}>
                     <Group justify="space-between">
-                      <Text size="sm" c="dimmed">Dimensions</Text>
+                      <Text size="sm" c="dimmed">
+                        Dimensions
+                      </Text>
                       <Text size="sm" fw={500}>
                         {selectedPhoto.width} × {selectedPhoto.height} px
                       </Text>
@@ -613,7 +721,9 @@ export default function Detections() {
                   </Grid.Col>
                   <Grid.Col span={6}>
                     <Group justify="space-between">
-                      <Text size="sm" c="dimmed">Total Detections</Text>
+                      <Text size="sm" c="dimmed">
+                        Total Detections
+                      </Text>
                       <Badge size="sm" variant="light" color="green">
                         {selectedPhoto.detection_count}
                       </Badge>
@@ -621,8 +731,12 @@ export default function Detections() {
                   </Grid.Col>
                   <Grid.Col span={6}>
                     <Group justify="space-between">
-                      <Text size="sm" c="dimmed">Photo ID</Text>
-                      <Text size="sm" fw={500}>#{selectedPhoto.id}</Text>
+                      <Text size="sm" c="dimmed">
+                        Photo ID
+                      </Text>
+                      <Text size="sm" fw={500}>
+                        #{selectedPhoto.id}
+                      </Text>
                     </Group>
                   </Grid.Col>
                 </Grid>
@@ -633,18 +747,24 @@ export default function Detections() {
             {selectedPhoto.detections.length > 1 && (
               <Paper p="md" withBorder>
                 <Stack gap="md">
-                  <Text size="sm" fw={600}>Other Detections in This Photo</Text>
+                  <Text size="sm" fw={600}>
+                    Other Detections in This Photo
+                  </Text>
                   <Stack gap="sm">
                     {selectedPhoto.detections
-                      .filter(d => d.id !== selectedDetectionId)
+                      .filter((d) => d.id !== selectedDetectionId)
                       .map((detection) => (
                         <Group key={detection.id} justify="space-between">
                           <Group gap="sm">
-                            <Badge variant="light" color={getConfidenceColor(detection.confidence)}>
+                            <Badge
+                              variant="light"
+                              color={getConfidenceColor(detection.confidence)}
+                            >
                               {detection.class_name}
                             </Badge>
                             <Text size="sm">
-                              {(detection.confidence * 100).toFixed(1)}% confidence
+                              {(detection.confidence * 100).toFixed(1)}%
+                              confidence
                             </Text>
                           </Group>
                           <Button

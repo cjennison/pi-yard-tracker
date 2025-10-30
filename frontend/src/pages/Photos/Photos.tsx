@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 import {
   Stack,
   Title,
@@ -23,7 +23,7 @@ import {
   Loader,
   Tooltip,
   NumberInput,
-} from '@mantine/core';
+} from "@mantine/core";
 import {
   IconSearch,
   IconFilter,
@@ -35,19 +35,20 @@ import {
   IconClock,
   IconPhoto,
   IconInfoCircle,
-} from '@tabler/icons-react';
-import { useDisclosure } from '@mantine/hooks';
-import { usePhotos, usePhoto } from '../../api/hooks';
-import dayjs from 'dayjs';
+} from "@tabler/icons-react";
+import { useDisclosure } from "@mantine/hooks";
+import { usePhotos, usePhoto } from "../../api/hooks";
+import dayjs from "dayjs";
 
 export default function Photos() {
   const [page, setPage] = useState(1);
   const [hasDetectionsOnly, setHasDetectionsOnly] = useState(false);
-  const [minDetections, setMinDetections] = useState<number | string>('');
-  const [sortBy, setSortBy] = useState<string>('timestamp');
-  const [search, setSearch] = useState('');
+  const [minDetections, setMinDetections] = useState<number | string>("");
+  const [sortBy, setSortBy] = useState<string>("timestamp");
+  const [search, setSearch] = useState("");
   const [selectedPhotoId, setSelectedPhotoId] = useState<number | null>(null);
-  const [modalOpened, { open: openModal, close: closeModal }] = useDisclosure(false);
+  const [modalOpened, { open: openModal, close: closeModal }] =
+    useDisclosure(false);
 
   const PAGE_SIZE = 20;
 
@@ -60,11 +61,13 @@ export default function Photos() {
     page,
     limit: PAGE_SIZE,
     has_detections: hasDetectionsOnly || undefined,
-    min_detections: typeof minDetections === 'number' ? minDetections : undefined,
+    min_detections:
+      typeof minDetections === "number" ? minDetections : undefined,
   });
 
   // Fetch selected photo details
-  const { data: selectedPhoto, isLoading: photoLoading } = usePhoto(selectedPhotoId);
+  const { data: selectedPhoto, isLoading: photoLoading } =
+    usePhoto(selectedPhotoId);
 
   const handlePhotoClick = (photoId: number) => {
     setSelectedPhotoId(photoId);
@@ -77,7 +80,10 @@ export default function Photos() {
   };
 
   const filteredPhotos = photosData?.photos.filter((photo) => {
-    if (search && !photo.filename.toLowerCase().includes(search.toLowerCase())) {
+    if (
+      search &&
+      !photo.filename.toLowerCase().includes(search.toLowerCase())
+    ) {
       return false;
     }
     return true;
@@ -87,13 +93,17 @@ export default function Photos() {
 
   const getImageUrl = (filepath: string) => {
     // Assuming the backend serves images at /photos/image/{filename}
-    const filename = filepath.split('/').pop();
+    const filename = filepath.split("/").pop();
     return `http://localhost:8000/photos/image/${filename}`;
   };
 
   if (photosError) {
     return (
-      <Alert icon={<IconInfoCircle size={16} />} title="Connection Error" color="red">
+      <Alert
+        icon={<IconInfoCircle size={16} />}
+        title="Connection Error"
+        color="red"
+      >
         Unable to load photos. Please ensure the backend server is running.
       </Alert>
     );
@@ -103,7 +113,9 @@ export default function Photos() {
     <Stack gap="lg">
       {/* Header */}
       <div>
-        <Title order={1} size="h2">Photo Gallery</Title>
+        <Title order={1} size="h2">
+          Photo Gallery
+        </Title>
         <Text c="dimmed" size="sm" mt={4}>
           Browse all captured photos with wildlife detections
         </Text>
@@ -113,17 +125,19 @@ export default function Photos() {
       <Card shadow="sm" padding="lg" radius="md" withBorder>
         <Stack gap="md">
           <Group justify="space-between">
-            <Text fw={600} size="sm">Filters</Text>
+            <Text fw={600} size="sm">
+              Filters
+            </Text>
             <Group gap="xs">
               <Button
                 variant="light"
                 size="xs"
                 leftSection={<IconX size={14} />}
                 onClick={() => {
-                  setSearch('');
+                  setSearch("");
                   setHasDetectionsOnly(false);
-                  setMinDetections('');
-                  setSortBy('timestamp');
+                  setMinDetections("");
+                  setSortBy("timestamp");
                   setPage(1);
                 }}
               >
@@ -146,13 +160,13 @@ export default function Photos() {
               <Select
                 placeholder="Sort by"
                 data={[
-                  { value: 'timestamp', label: 'Date (Newest)' },
-                  { value: 'timestamp_asc', label: 'Date (Oldest)' },
-                  { value: 'detection_count', label: 'Most Detections' },
-                  { value: 'filename', label: 'Filename' },
+                  { value: "timestamp", label: "Date (Newest)" },
+                  { value: "timestamp_asc", label: "Date (Oldest)" },
+                  { value: "detection_count", label: "Most Detections" },
+                  { value: "filename", label: "Filename" },
                 ]}
                 value={sortBy}
-                onChange={(value) => setSortBy(value || 'timestamp')}
+                onChange={(value) => setSortBy(value || "timestamp")}
               />
             </Grid.Col>
 
@@ -172,7 +186,9 @@ export default function Photos() {
                 <Switch
                   label="Has detections only"
                   checked={hasDetectionsOnly}
-                  onChange={(e) => setHasDetectionsOnly(e.currentTarget.checked)}
+                  onChange={(e) =>
+                    setHasDetectionsOnly(e.currentTarget.checked)
+                  }
                 />
               </Group>
             </Grid.Col>
@@ -187,21 +203,28 @@ export default function Photos() {
             <Group gap="xs">
               <IconPhoto size={18} color="var(--mantine-color-blue-6)" />
               <Text size="sm">
-                <Text span fw={600}>{photosData.total.toLocaleString()}</Text> total photos
+                <Text span fw={600}>
+                  {photosData.total.toLocaleString()}
+                </Text>{" "}
+                total photos
               </Text>
             </Group>
           </Paper>
-          
-          {filteredPhotos && filteredPhotos.length !== photosData.photos.length && (
-            <Paper p="sm" withBorder>
-              <Group gap="xs">
-                <IconFilter size={18} color="var(--mantine-color-orange-6)" />
-                <Text size="sm">
-                  <Text span fw={600}>{filteredPhotos.length}</Text> filtered results
-                </Text>
-              </Group>
-            </Paper>
-          )}
+
+          {filteredPhotos &&
+            filteredPhotos.length !== photosData.photos.length && (
+              <Paper p="sm" withBorder>
+                <Group gap="xs">
+                  <IconFilter size={18} color="var(--mantine-color-orange-6)" />
+                  <Text size="sm">
+                    <Text span fw={600}>
+                      {filteredPhotos.length}
+                    </Text>{" "}
+                    filtered results
+                  </Text>
+                </Group>
+              </Paper>
+            )}
         </Group>
       )}
 
@@ -209,7 +232,10 @@ export default function Photos() {
       {photosLoading ? (
         <Grid>
           {Array.from({ length: PAGE_SIZE }).map((_, index) => (
-            <Grid.Col key={index} span={{ base: 12, xs: 6, sm: 4, md: 3, lg: 2.4 }}>
+            <Grid.Col
+              key={index}
+              span={{ base: 12, xs: 6, sm: 4, md: 3, lg: 2.4 }}
+            >
               <Card shadow="sm" padding="sm" radius="md" withBorder>
                 <Card.Section>
                   <Skeleton height={200} />
@@ -226,13 +252,19 @@ export default function Photos() {
         <>
           <Grid>
             {filteredPhotos.map((photo) => (
-              <Grid.Col key={photo.id} span={{ base: 12, xs: 6, sm: 4, md: 3, lg: 2.4 }}>
+              <Grid.Col
+                key={photo.id}
+                span={{ base: 12, xs: 6, sm: 4, md: 3, lg: 2.4 }}
+              >
                 <Card
                   shadow="sm"
                   padding="sm"
                   radius="md"
                   withBorder
-                  style={{ cursor: 'pointer', transition: 'transform 0.2s ease' }}
+                  style={{
+                    cursor: "pointer",
+                    transition: "transform 0.2s ease",
+                  }}
                   onClick={() => handlePhotoClick(photo.id)}
                   className="hover-lift"
                 >
@@ -260,13 +292,19 @@ export default function Photos() {
 
                     <Group justify="space-between" wrap="nowrap">
                       <Text size="xs" c="dimmed">
-                        <IconClock size={12} style={{ display: 'inline', marginRight: 4 }} />
-                        {dayjs(photo.timestamp).format('MMM D, HH:mm')}
+                        <IconClock
+                          size={12}
+                          style={{ display: "inline", marginRight: 4 }}
+                        />
+                        {dayjs(photo.timestamp).format("MMM D, HH:mm")}
                       </Text>
-                      
+
                       {photo.detection_count > 0 && (
                         <Badge size="sm" variant="light" color="green">
-                          {photo.detection_count} {photo.detection_count === 1 ? 'detection' : 'detections'}
+                          {photo.detection_count}{" "}
+                          {photo.detection_count === 1
+                            ? "detection"
+                            : "detections"}
                         </Badge>
                       )}
                     </Group>
@@ -279,7 +317,9 @@ export default function Photos() {
                             size="xs"
                             variant="dot"
                             color="blue"
-                            title={`${detection.class_name} (${(detection.confidence * 100).toFixed(0)}%)`}
+                            title={`${detection.class_name} (${(
+                              detection.confidence * 100
+                            ).toFixed(0)}%)`}
                           >
                             {detection.class_name}
                           </Badge>
@@ -320,8 +360,8 @@ export default function Photos() {
               </Text>
               <Text size="sm" c="dimmed" ta="center">
                 {search || hasDetectionsOnly || minDetections
-                  ? 'Try adjusting your filters to see more results'
-                  : 'Photos will appear here once the camera starts capturing'}
+                  ? "Try adjusting your filters to see more results"
+                  : "Photos will appear here once the camera starts capturing"}
               </Text>
             </Stack>
           </Stack>
@@ -332,7 +372,7 @@ export default function Photos() {
       <Modal
         opened={modalOpened}
         onClose={handleModalClose}
-        title={selectedPhoto?.filename || 'Photo Details'}
+        title={selectedPhoto?.filename || "Photo Details"}
         size="xl"
         centered
       >
@@ -358,21 +398,31 @@ export default function Photos() {
               <Grid>
                 <Grid.Col span={6}>
                   <Stack gap="xs">
-                    <Text size="sm" c="dimmed">Filename</Text>
-                    <Text size="sm" fw={500}>{selectedPhoto.filename}</Text>
-                  </Stack>
-                </Grid.Col>
-                <Grid.Col span={6}>
-                  <Stack gap="xs">
-                    <Text size="sm" c="dimmed">Timestamp</Text>
+                    <Text size="sm" c="dimmed">
+                      Filename
+                    </Text>
                     <Text size="sm" fw={500}>
-                      {dayjs(selectedPhoto.timestamp).format('MMMM D, YYYY at h:mm:ss A')}
+                      {selectedPhoto.filename}
                     </Text>
                   </Stack>
                 </Grid.Col>
                 <Grid.Col span={6}>
                   <Stack gap="xs">
-                    <Text size="sm" c="dimmed">Dimensions</Text>
+                    <Text size="sm" c="dimmed">
+                      Timestamp
+                    </Text>
+                    <Text size="sm" fw={500}>
+                      {dayjs(selectedPhoto.timestamp).format(
+                        "MMMM D, YYYY at h:mm:ss A"
+                      )}
+                    </Text>
+                  </Stack>
+                </Grid.Col>
+                <Grid.Col span={6}>
+                  <Stack gap="xs">
+                    <Text size="sm" c="dimmed">
+                      Dimensions
+                    </Text>
                     <Text size="sm" fw={500}>
                       {selectedPhoto.width} × {selectedPhoto.height} px
                     </Text>
@@ -380,9 +430,14 @@ export default function Photos() {
                 </Grid.Col>
                 <Grid.Col span={6}>
                   <Stack gap="xs">
-                    <Text size="sm" c="dimmed">Detections</Text>
+                    <Text size="sm" c="dimmed">
+                      Detections
+                    </Text>
                     <Text size="sm" fw={500}>
-                      {selectedPhoto.detection_count} {selectedPhoto.detection_count === 1 ? 'object' : 'objects'}
+                      {selectedPhoto.detection_count}{" "}
+                      {selectedPhoto.detection_count === 1
+                        ? "object"
+                        : "objects"}
                     </Text>
                   </Stack>
                 </Grid.Col>
@@ -393,20 +448,34 @@ export default function Photos() {
             {selectedPhoto.detections.length > 0 && (
               <Paper p="md" withBorder>
                 <Stack gap="md">
-                  <Text size="sm" fw={600}>Detected Objects</Text>
+                  <Text size="sm" fw={600}>
+                    Detected Objects
+                  </Text>
                   <Stack gap="sm">
                     {selectedPhoto.detections.map((detection) => (
-                      <Group key={detection.id} justify="space-between" wrap="nowrap">
+                      <Group
+                        key={detection.id}
+                        justify="space-between"
+                        wrap="nowrap"
+                      >
                         <Group gap="sm">
                           <Badge variant="light" color="blue">
                             {detection.class_name}
                           </Badge>
                           <Text size="sm">
-                            {(detection.confidence * 100).toFixed(1)}% confidence
+                            {(detection.confidence * 100).toFixed(1)}%
+                            confidence
                           </Text>
                         </Group>
                         <Text size="xs" c="dimmed">
-                          {Math.round(detection.bbox.width * selectedPhoto.width)} × {Math.round(detection.bbox.height * selectedPhoto.height)} px
+                          {Math.round(
+                            detection.bbox.width * selectedPhoto.width
+                          )}{" "}
+                          ×{" "}
+                          {Math.round(
+                            detection.bbox.height * selectedPhoto.height
+                          )}{" "}
+                          px
                         </Text>
                       </Group>
                     ))}
@@ -421,7 +490,7 @@ export default function Photos() {
                 variant="light"
                 leftSection={<IconDownload size={16} />}
                 onClick={() => {
-                  const link = document.createElement('a');
+                  const link = document.createElement("a");
                   link.href = getImageUrl(selectedPhoto.filepath);
                   link.download = selectedPhoto.filename;
                   link.click();

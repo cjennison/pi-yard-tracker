@@ -1,10 +1,10 @@
-import axios from 'axios';
+import axios from "axios";
 
-// Base API client with proxy support
+// Base API client pointing to FastAPI backend on port 8000
 const apiClient = axios.create({
-  baseURL: '/api',
+  baseURL: "http://localhost:8000/api",
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
   timeout: 10000,
 });
@@ -25,7 +25,7 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
-    console.error('API Error:', error);
+    console.error("API Error:", error);
     return Promise.reject(error);
   }
 );

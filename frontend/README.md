@@ -1,73 +1,187 @@
-# React + TypeScript + Vite
+# Pi Yard Tracker Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern, responsive web interface for the Pi Yard Tracker wildlife monitoring system. Built with React, TypeScript, and Mantine UI components for a slick user experience.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 🎨 Modern UI/UX
 
-## React Compiler
+- **Dark/Light Mode**: Automatic theme switching with system preference detection
+- **Responsive Design**: Optimized for desktop, tablet, and mobile devices
+- **Smooth Animations**: Hover effects, page transitions, and loading states
+- **Accessibility**: WCAG compliant with focus management and screen reader support
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### 📊 Dashboard
 
-## Expanding the ESLint configuration
+- **Real-time Statistics**: Auto-refreshing stats every 5 seconds
+- **Interactive Timeline**: Activity visualization with multiple time ranges (24h, 7d, 30d)
+- **Detection Heatmap**: Hourly activity patterns throughout the day
+- **Distribution Charts**: Donut and bar charts for detection analysis
+- **Recent Activity Feed**: Latest detections with timestamps
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### 📷 Photo Gallery
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- **Grid Layout**: Responsive photo grid with hover effects
+- **Advanced Filtering**: Search, date range, detection count filters
+- **Modal Viewer**: Full-screen photo viewing with detection details
+- **Lazy Loading**: Optimized image loading for performance
+- **Batch Operations**: Download and manage multiple photos
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### 🎯 Detection Analysis
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- **Sortable Table**: Interactive table with sortable columns
+- **Confidence Visualization**: Progress bars and color-coded confidence levels
+- **Advanced Filters**: Class-based filtering with confidence range sliders
+- **Bounding Box Details**: Precise object location information
+- **Detection Timeline**: Track detection patterns over time
+
+### 📡 Live Camera View
+
+- **Real-time Stream**: WebSocket-based live camera feed
+- **Detection Overlays**: Real-time bounding boxes with confidence scores
+- **Performance Stats**: FPS, processing time, and detection metrics
+- **Interactive Controls**: Toggle overlays, adjust confidence thresholds
+- **Activity Monitor**: Live detection feed with recent activity log
+
+## 🛠 Tech Stack
+
+- **React 18**: Latest React with hooks and concurrent features
+- **TypeScript**: Type-safe development with excellent IDE support
+- **Mantine v8**: Modern React components library with excellent UX
+- **React Query**: Server state management with caching and synchronization
+- **React Router**: Client-side routing with lazy loading
+- **Recharts**: Interactive charts and data visualization
+- **Axios**: HTTP client with interceptors and error handling
+- **Day.js**: Lightweight date/time manipulation
+- **Vite**: Fast build tool with hot module replacement
+
+## 🎨 Design System
+
+### Color Palette
+
+- **Primary**: Green tones for nature/wildlife theme
+- **Secondary**: Blue for interface elements
+- **Accent**: Orange for highlights and warnings
+- **Status Colors**: Semantic colors for success, warning, error states
+
+### Typography
+
+- **Headers**: Inter font family for clean, modern look
+- **Body**: System fonts for optimal readability
+- **Monospace**: Code and data display
+
+### Layout
+
+- **Sidebar Navigation**: Collapsible sidebar with contextual stats
+- **Card-based UI**: Consistent card layouts with shadows and borders
+- **Grid System**: Responsive 12-column grid with breakpoints
+- **Spacing**: Consistent spacing scale (xs, sm, md, lg, xl)
+
+## 📱 Responsive Breakpoints
+
+```css
+xs: 0px      /* Mobile portrait */
+sm: 576px    /* Mobile landscape */
+md: 768px    /* Tablet */
+lg: 992px    /* Desktop */
+xl: 1200px   /* Large desktop */
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🔧 Development
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Prerequisites
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+- Node.js 18+
+- npm or yarn
+
+### Installation
+
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
 ```
+
+### Project Structure
+
+```
+src/
+├── api/                 # API client and hooks
+│   ├── client.ts       # Axios configuration
+│   ├── hooks.ts        # React Query hooks
+│   └── types.ts        # TypeScript interfaces
+├── components/         # Reusable components
+│   ├── ErrorBoundary/  # Error handling
+│   ├── Layout/         # App shell layout
+│   └── Loading/        # Loading states
+├── pages/              # Page components
+│   ├── Dashboard/      # Main dashboard
+│   ├── Photos/         # Photo gallery
+│   ├── Detections/     # Detection analysis
+│   └── LiveView/       # Live camera feed
+├── App.tsx             # Root component
+├── theme.ts            # Mantine theme config
+└── routes.tsx          # React Router config
+```
+
+## 🎯 UX Features
+
+### Performance Optimizations
+
+- **Code Splitting**: Route-based lazy loading
+- **Image Optimization**: WebP support with fallbacks
+- **Caching**: React Query caching with background updates
+- **Debouncing**: Search input debouncing for better performance
+- **Virtualization**: Large lists rendered efficiently
+
+### Accessibility
+
+- **Keyboard Navigation**: Full keyboard support
+- **Focus Management**: Proper focus trapping in modals
+- **Screen Reader**: ARIA labels and semantic HTML
+- **Color Contrast**: WCAG AA compliant color ratios
+- **Reduced Motion**: Respects user's motion preferences
+
+### Error Handling
+
+- **Error Boundaries**: Graceful error recovery
+- **Network Errors**: Retry mechanisms with exponential backoff
+- **User Feedback**: Toast notifications for actions
+- **Offline Support**: Basic offline functionality with service workers
+
+### Loading States
+
+- **Skeleton Screens**: Content-aware loading placeholders
+- **Progressive Loading**: Incremental content loading
+- **Spinners**: Context-appropriate loading indicators
+- **Progress Bars**: For long-running operations
+
+## 🚀 Getting Started
+
+1. **Start the backend server** (ensure it's running on port 8000)
+2. **Install frontend dependencies**: `npm install`
+3. **Start development server**: `npm run dev`
+4. **Open browser**: Navigate to `http://localhost:5173`
+
+The frontend will connect to the API at `http://localhost:8000` and display real-time wildlife detection data.
+
+## 🔮 Future Enhancements
+
+- **PWA Support**: Offline functionality and app installation
+- **Push Notifications**: Real-time detection alerts
+- **Export Features**: CSV/PDF export for reports
+- **Advanced Filters**: Machine learning-based filtering
+- **Video Playback**: Recorded video clips of detections
+- **Map Integration**: Geographic detection mapping
+
+---
+
+Built with ❤️ for wildlife enthusiasts and technology lovers!
