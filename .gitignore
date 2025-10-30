@@ -14,7 +14,11 @@ env/
 ENV/
 
 # Photos and database
-data/
+data/*
+!data/to_annotate/
+!data/deer_dataset.yaml
+!data/deer_dataset.yaml.example
+!data/multi_object_dataset.yaml
 *.db
 *.sqlite
 
