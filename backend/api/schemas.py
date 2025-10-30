@@ -117,6 +117,12 @@ class StatsResponse(BaseModel):
     photos_with_detections: int
     total_detections: int
     detection_classes: List[dict]
+    avg_detections_per_photo: float
+    unique_classes: int
+    most_detected_class: Optional[str] = None
+    latest_photo_time: Optional[str] = None
+    oldest_photo_time: Optional[str] = None
+    active_session_id: Optional[int] = None
     
     class Config:
         json_schema_extra = {
@@ -128,7 +134,13 @@ class StatsResponse(BaseModel):
                     {"class": "coffee_mug", "count": 35},
                     {"class": "person", "count": 20},
                     {"class": "cat", "count": 12}
-                ]
+                ],
+                "avg_detections_per_photo": 0.45,
+                "unique_classes": 3,
+                "most_detected_class": "coffee_mug",
+                "latest_photo_time": "2025-10-29T10:00:00",
+                "oldest_photo_time": "2025-10-28T08:00:00",
+                "active_session_id": 5
             }
         }
 

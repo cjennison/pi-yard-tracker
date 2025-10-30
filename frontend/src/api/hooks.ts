@@ -142,10 +142,11 @@ export const useDetectionClasses = (
   return useQuery<DetectionClass[]>({
     queryKey: ["detection-classes"],
     queryFn: async () => {
-      const { data } = await apiClient.get<DetectionClass[]>(
-        "/detections/classes"
-      );
-      return data;
+      const { data } = await apiClient.get<{
+        classes: DetectionClass[];
+        total_detections: number;
+      }>("/detections/classes");
+      return data.classes; // Extract the classes array from the response object
     },
     refetchInterval: 10000, // Auto-refresh every 10 seconds
     ...options,

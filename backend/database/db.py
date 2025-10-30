@@ -161,11 +161,47 @@ class Database:
             """)
             classes = [{"class": row[0], "count": row[1]} for row in cursor.fetchall()]
             
+            # Calculate average detections per photo
+            avg_detections_per_photo = (
+                total_detections / total_photos if total_photos > 0 else 0.0
+            )
+            
+            # Get unique class count
+            unique_classes = len(classes)
+            
+            # Get most detected class
+            most_detected_class = classes[0]["class"] if classes else None
+            
+            # Get latest and oldest photo timestamps
+            cursor.execute("SELECT MAX(captured_at) FROM photos")
+            latest_photo_time_row = cursor.fetchone()
+            latest_photo_time = latest_photo_time_row[0] if latest_photo_time_row[0] else None
+            
+            cursor.execute("SELECT MIN(captured_at) FROM photos")
+            oldest_photo_time_row = cursor.fetchone()
+            oldest_photo_time = oldest_photo_time_row[0] if oldest_photo_time_row[0] else None
+            
+            # Get active session ID (most recent session without an end time)
+            cursor.execute("""
+                SELECT id FROM detection_sessions 
+                WHERE ended_at IS NULL 
+                ORDER BY started_at DESC 
+                LIMIT 1
+            """)
+            active_session_row = cursor.fetchone()
+            active_session_id = active_session_row[0] if active_session_row else None
+            
             return {
                 "total_photos": total_photos,
                 "photos_with_detections": photos_with_detections,
                 "total_detections": total_detections,
-                "detection_classes": classes
+                "detection_classes": classes,
+                "avg_detections_per_photo": avg_detections_per_photo,
+                "unique_classes": unique_classes,
+                "most_detected_class": most_detected_class,
+                "latest_photo_time": latest_photo_time,
+                "oldest_photo_time": oldest_photo_time,
+                "active_session_id": active_session_id
             }
 
 
