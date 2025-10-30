@@ -21,10 +21,23 @@ class Photo:
     has_detections: bool
     detection_count: int
     created_at: datetime
+    marked_for_retraining: bool = False
+    marked_at: Optional[datetime] = None
     
     @classmethod
     def from_row(cls, row) -> 'Photo':
         """Create Photo from database row"""
+        # Handle new columns that might not exist in older databases
+        try:
+            marked_for_retraining = bool(row['marked_for_retraining'])
+        except (KeyError, IndexError):
+            marked_for_retraining = False
+        
+        try:
+            marked_at = datetime.fromisoformat(row['marked_at']) if row['marked_at'] else None
+        except (KeyError, IndexError):
+            marked_at = None
+        
         return cls(
             id=row['id'],
             filename=row['filename'],
@@ -34,7 +47,9 @@ class Photo:
             captured_at=datetime.fromisoformat(row['captured_at']),
             has_detections=bool(row['has_detections']),
             detection_count=row['detection_count'],
-            created_at=datetime.fromisoformat(row['created_at'])
+            created_at=datetime.fromisoformat(row['created_at']),
+            marked_for_retraining=marked_for_retraining,
+            marked_at=marked_at
         )
     
     def to_dict(self) -> dict:
@@ -48,7 +63,9 @@ class Photo:
             "captured_at": self.captured_at.isoformat(),
             "has_detections": self.has_detections,
             "detection_count": self.detection_count,
-            "created_at": self.created_at.isoformat()
+            "created_at": self.created_at.isoformat(),
+            "marked_for_retraining": self.marked_for_retraining,
+            "marked_at": self.marked_at.isoformat() if self.marked_at else None
         }
 
 

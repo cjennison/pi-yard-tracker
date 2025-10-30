@@ -10,7 +10,15 @@ from typing import Optional, List
 from datetime import datetime
 from pathlib import Path
 
-from backend.database import get_photos, get_photo, get_detections_for_photo
+from backend.database import (
+    get_photos, 
+    get_photo, 
+    get_detections_for_photo,
+    mark_photo_for_retraining,
+    unmark_photo_for_retraining,
+    get_marked_photos,
+    get_marked_photos_count
+)
 from ..schemas import PhotoResponse, PhotoWithDetections
 
 router = APIRouter(prefix="/photos", tags=["photos"])
@@ -122,3 +130,88 @@ def get_photo_image(filename: str):
         media_type="image/jpeg",
         filename=filename
     )
+
+
+@router.post("/{photo_id}/mark-for-retraining")
+def mark_for_retraining(photo_id: int):
+    """
+    Mark a photo for retraining (Active Learning workflow)
+    
+    This copies the photo to data/to_annotate/ for later annotation and retraining.
+    Used when the model missed a detection that should have been found.
+    
+    - **photo_id**: Photo ID to mark
+    """
+    success = mark_photo_for_retraining(photo_id)
+    
+    if not success:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Failed to mark photo {photo_id} for retraining"
+        )
+    
+    # Return updated photo
+    photo = get_photo(photo_id)
+    detections = get_detections_for_photo(photo_id)
+    photo_dict = photo.to_dict()
+    photo_dict['detections'] = [det.to_dict() for det in detections]
+    
+    return PhotoWithDetections(**photo_dict)
+
+
+@router.delete("/{photo_id}/mark-for-retraining")
+def unmark_for_retraining(photo_id: int):
+    """
+    Unmark a photo for retraining
+    
+    Note: This does NOT delete the photo from data/to_annotate/
+    
+    - **photo_id**: Photo ID to unmark
+    """
+    success = unmark_photo_for_retraining(photo_id)
+    
+    if not success:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Failed to unmark photo {photo_id} for retraining"
+        )
+    
+    # Return updated photo
+    photo = get_photo(photo_id)
+    detections = get_detections_for_photo(photo_id)
+    photo_dict = photo.to_dict()
+    photo_dict['detections'] = [det.to_dict() for det in detections]
+    
+    return PhotoWithDetections(**photo_dict)
+
+
+@router.get("/marked/list", response_model=List[PhotoWithDetections])
+def list_marked_photos(
+    limit: int = Query(100, ge=1, le=500, description="Maximum number of photos to return"),
+    offset: int = Query(0, ge=0, description="Number of photos to skip")
+):
+    """
+    Get all photos marked for retraining
+    
+    - **limit**: Maximum photos to return (1-500, default 100)
+    - **offset**: Pagination offset (default 0)
+    """
+    photos = get_marked_photos(limit=limit, offset=offset)
+    
+    # Add detections to each photo
+    result = []
+    for photo_dict in photos:
+        detections = get_detections_for_photo(photo_dict['id'])
+        photo_dict['detections'] = [det.to_dict() for det in detections]
+        result.append(PhotoWithDetections(**photo_dict))
+    
+    return result
+
+
+@router.get("/marked/count")
+def count_marked_photos():
+    """
+    Get count of photos marked for retraining
+    """
+    count = get_marked_photos_count()
+    return {"count": count}

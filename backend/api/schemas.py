@@ -66,6 +66,8 @@ class PhotoResponse(BaseModel):
     has_detections: bool
     detection_count: int
     created_at: datetime
+    marked_for_retraining: bool = False
+    marked_at: Optional[datetime] = None
     
     class Config:
         json_schema_extra = {
@@ -78,7 +80,9 @@ class PhotoResponse(BaseModel):
                 "captured_at": "2025-10-29T10:00:00",
                 "has_detections": True,
                 "detection_count": 2,
-                "created_at": "2025-10-29T10:00:00"
+                "created_at": "2025-10-29T10:00:00",
+                "marked_for_retraining": False,
+                "marked_at": None
             }
         }
 

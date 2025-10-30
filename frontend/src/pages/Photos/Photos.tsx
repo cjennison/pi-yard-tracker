@@ -35,14 +35,23 @@ import {
   IconClock,
   IconPhoto,
   IconInfoCircle,
+  IconBrain,
+  IconCheck,
+  IconRefresh,
 } from "@tabler/icons-react";
 import { useDisclosure } from "@mantine/hooks";
-import { usePhotos, usePhoto } from "../../api/hooks";
+import {
+  usePhotos,
+  usePhoto,
+  useMarkPhotoForRetraining,
+  useUnmarkPhotoForRetraining,
+} from "../../api/hooks";
 import dayjs from "dayjs";
 import ImageWithDetections from "../../components/ImageWithDetections/ImageWithDetections";
 
 export default function Photos() {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [hasDetectionsOnly, setHasDetectionsOnly] = useState(false);
   const [minDetections, setMinDetections] = useState<number | string>("");
   const [sortBy, setSortBy] = useState<string>("timestamp");
@@ -51,16 +60,16 @@ export default function Photos() {
   const [modalOpened, { open: openModal, close: closeModal }] =
     useDisclosure(false);
 
-  const PAGE_SIZE = 20;
-
   // Fetch photos with current filters
   const {
     data: photosData,
     isLoading: photosLoading,
     error: photosError,
+    refetch: refetchPhotos,
+    isFetching: photosFetching,
   } = usePhotos({
     page,
-    limit: PAGE_SIZE,
+    limit: pageSize,
     has_detections: hasDetectionsOnly || undefined,
     min_detections:
       typeof minDetections === "number" ? minDetections : undefined,
@@ -69,6 +78,24 @@ export default function Photos() {
   // Fetch selected photo details
   const { data: selectedPhoto, isLoading: photoLoading } =
     usePhoto(selectedPhotoId);
+
+  // Active learning mutations
+  const markForRetrainingMutation = useMarkPhotoForRetraining();
+  const unmarkForRetrainingMutation = useUnmarkPhotoForRetraining();
+
+  const handleMarkForRetraining = async () => {
+    if (!selectedPhoto) return;
+
+    try {
+      if (selectedPhoto.marked_for_retraining) {
+        await unmarkForRetrainingMutation.mutateAsync(selectedPhoto.id);
+      } else {
+        await markForRetrainingMutation.mutateAsync(selectedPhoto.id);
+      }
+    } catch (error) {
+      console.error("Failed to toggle retraining status:", error);
+    }
+  };
 
   const handlePhotoClick = (photoId: number) => {
     setSelectedPhotoId(photoId);
@@ -90,12 +117,23 @@ export default function Photos() {
     return true;
   });
 
-  const totalPages = photosData ? Math.ceil(photosData.total / PAGE_SIZE) : 0;
+  const totalPages = photosData ? Math.ceil(photosData.total / pageSize) : 0;
 
   const getImageUrl = (filepath: string) => {
     // Assuming the backend serves images at /photos/image/{filename}
     const filename = filepath.split("/").pop();
     return `http://localhost:8000/photos/image/${filename}`;
+  };
+
+  const handleRefresh = () => {
+    refetchPhotos();
+  };
+
+  const handlePageSizeChange = (value: string | null) => {
+    if (value) {
+      setPageSize(parseInt(value));
+      setPage(1); // Reset to first page when changing page size
+    }
   };
 
   if (photosError) {
@@ -125,11 +163,21 @@ export default function Photos() {
       {/* Filters */}
       <Card shadow="sm" padding="lg" radius="md" withBorder>
         <Stack gap="md">
-          <Group justify="space-between">
+          <Group justify="space-between" align="center">
             <Text fw={600} size="sm">
               Filters
             </Text>
             <Group gap="xs">
+              <Tooltip label="Refresh photos">
+                <ActionIcon
+                  variant="light"
+                  color="blue"
+                  onClick={handleRefresh}
+                  loading={photosFetching && !photosLoading}
+                >
+                  <IconRefresh size={16} />
+                </ActionIcon>
+              </Tooltip>
               <Button
                 variant="light"
                 size="xs"
@@ -148,7 +196,7 @@ export default function Photos() {
           </Group>
 
           <Grid>
-            <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+            <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
               <TextInput
                 placeholder="Search by filename..."
                 leftSection={<IconSearch size={16} />}
@@ -157,7 +205,7 @@ export default function Photos() {
               />
             </Grid.Col>
 
-            <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+            <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
               <Select
                 placeholder="Sort by"
                 data={[
@@ -171,7 +219,21 @@ export default function Photos() {
               />
             </Grid.Col>
 
-            <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
+            <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+              <Select
+                placeholder="Items per page"
+                data={[
+                  { value: "10", label: "10 per page" },
+                  { value: "20", label: "20 per page" },
+                  { value: "50", label: "50 per page" },
+                  { value: "100", label: "100 per page" },
+                ]}
+                value={pageSize.toString()}
+                onChange={handlePageSizeChange}
+              />
+            </Grid.Col>
+
+            <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
               <NumberInput
                 placeholder="Min detections"
                 leftSection={<IconEye size={16} />}
@@ -182,16 +244,15 @@ export default function Photos() {
               />
             </Grid.Col>
 
-            <Grid.Col span={{ base: 12, sm: 6, md: 3 }}>
-              <Group>
-                <Switch
-                  label="Has detections only"
-                  checked={hasDetectionsOnly}
-                  onChange={(e) =>
-                    setHasDetectionsOnly(e.currentTarget.checked)
-                  }
-                />
-              </Group>
+            <Grid.Col span={{ base: 12, sm: 6, md: 4 }}>
+              <Switch
+                label="Has detections only"
+                checked={hasDetectionsOnly}
+                onChange={(e) => setHasDetectionsOnly(e.currentTarget.checked)}
+                styles={{
+                  root: { paddingTop: 8 },
+                }}
+              />
             </Grid.Col>
           </Grid>
         </Stack>
@@ -232,7 +293,7 @@ export default function Photos() {
       {/* Photo Grid */}
       {photosLoading ? (
         <Grid>
-          {Array.from({ length: PAGE_SIZE }).map((_, index) => (
+          {Array.from({ length: pageSize }).map((_, index) => (
             <Grid.Col
               key={index}
               span={{ base: 12, xs: 6, sm: 4, md: 3, lg: 2.4 }}
@@ -484,7 +545,42 @@ export default function Photos() {
             )}
 
             {/* Actions */}
-            <Group justify="flex-end">
+            <Group justify="space-between">
+              <Tooltip
+                label={
+                  selectedPhoto.marked_for_retraining
+                    ? "Remove from retraining queue"
+                    : "Mark this photo for model retraining (Active Learning)"
+                }
+                multiline
+                w={250}
+              >
+                <Button
+                  variant={
+                    selectedPhoto.marked_for_retraining ? "filled" : "light"
+                  }
+                  color={
+                    selectedPhoto.marked_for_retraining ? "orange" : "blue"
+                  }
+                  leftSection={
+                    selectedPhoto.marked_for_retraining ? (
+                      <IconCheck size={16} />
+                    ) : (
+                      <IconBrain size={16} />
+                    )
+                  }
+                  onClick={handleMarkForRetraining}
+                  loading={
+                    markForRetrainingMutation.isPending ||
+                    unmarkForRetrainingMutation.isPending
+                  }
+                >
+                  {selectedPhoto.marked_for_retraining
+                    ? "Marked for Retraining"
+                    : "Mark for Retraining"}
+                </Button>
+              </Tooltip>
+
               <Button
                 variant="light"
                 leftSection={<IconDownload size={16} />}

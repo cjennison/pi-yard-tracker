@@ -49,6 +49,17 @@ class Database:
             conn.commit()
         
         logger.info("✅ Database schema initialized")
+        
+        # Run migrations
+        self._run_migrations()
+    
+    def _run_migrations(self):
+        """Run database migrations"""
+        try:
+            from .migrate import run_migrations
+            run_migrations(self.db_path)
+        except Exception as e:
+            logger.warning(f"⚠️  Migration runner not available or failed: {e}")
     
     @contextmanager
     def get_connection(self):

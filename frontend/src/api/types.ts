@@ -32,6 +32,8 @@ export interface Photo {
   detections: Detection[];
   created_at: string;
   has_detections: boolean;
+  marked_for_retraining: boolean;
+  marked_at: string | null;
 }
 
 export interface Stats {

@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { UseQueryOptions } from "@tanstack/react-query";
 import apiClient from "./client";
 import type {
@@ -174,6 +174,59 @@ export const useSessions = (
       });
       return data;
     },
+    ...options,
+  });
+};
+
+// Active Learning - Mark photo for retraining
+export const useMarkPhotoForRetraining = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (photoId: number) => {
+      const { data } = await apiClient.post<Photo>(
+        `/photos/${photoId}/mark-for-retraining`
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      // Invalidate and refetch photo queries
+      queryClient.invalidateQueries({ queryKey: ["photo", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["photos"] });
+    },
+  });
+};
+
+// Active Learning - Unmark photo for retraining
+export const useUnmarkPhotoForRetraining = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (photoId: number) => {
+      const { data } = await apiClient.delete<Photo>(
+        `/photos/${photoId}/mark-for-retraining`
+      );
+      return data;
+    },
+    onSuccess: (data) => {
+      // Invalidate and refetch photo queries
+      queryClient.invalidateQueries({ queryKey: ["photo", data.id] });
+      queryClient.invalidateQueries({ queryKey: ["photos"] });
+    },
+  });
+};
+
+// Active Learning - Get marked photos count
+export const useMarkedPhotosCount = (options?: UseQueryOptions<number>) => {
+  return useQuery<number>({
+    queryKey: ["marked-photos-count"],
+    queryFn: async () => {
+      const { data } = await apiClient.get<{ count: number }>(
+        "/photos/marked/count"
+      );
+      return data.count;
+    },
+    refetchInterval: 10000, // Auto-refresh every 10 seconds
     ...options,
   });
 };

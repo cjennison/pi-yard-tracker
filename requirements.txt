@@ -4,7 +4,7 @@
 
 # Phase 2A Requirements - Object Detection
 ultralytics>=8.0.0        # YOLOv8 framework
-opencv-python>=4.8.0      # Image processing (used by ultralytics)
+opencv-python-headless>=4.8.0  # Image processing (headless for Pi, no GUI)
 pillow>=10.0.0           # Image handling
 
 # Phase 2B Requirements - Synthetic Training Data Generation

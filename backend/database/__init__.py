@@ -40,6 +40,11 @@ from .queries import (
     get_sessions,
     # Statistics
     get_detection_stats,
+    # Active learning
+    mark_photo_for_retraining,
+    unmark_photo_for_retraining,
+    get_marked_photos,
+    get_marked_photos_count,
 )
 
 __all__ = [
@@ -65,4 +70,9 @@ __all__ = [
     "get_sessions",
     # Statistics
     "get_detection_stats",
+    # Active learning
+    "mark_photo_for_retraining",
+    "unmark_photo_for_retraining",
+    "get_marked_photos",
+    "get_marked_photos_count",
 ]

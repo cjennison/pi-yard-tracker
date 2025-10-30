@@ -27,6 +27,13 @@ from .stats import (
     get_detection_stats
 )
 
+from .active_learning import (
+    mark_photo_for_retraining,
+    unmark_photo_for_retraining,
+    get_marked_photos,
+    get_marked_photos_count
+)
+
 __all__ = [
     # Photo operations
     'create_photo',
@@ -46,4 +53,10 @@ __all__ = [
     
     # Statistics
     'get_detection_stats',
+    
+    # Active learning
+    'mark_photo_for_retraining',
+    'unmark_photo_for_retraining',
+    'get_marked_photos',
+    'get_marked_photos_count',
 ]
