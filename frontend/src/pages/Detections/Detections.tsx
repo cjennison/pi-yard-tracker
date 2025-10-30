@@ -21,7 +21,6 @@ import {
   Tooltip,
   Grid,
   RangeSlider,
-  Box,
   ScrollArea,
 } from "@mantine/core";
 import {
